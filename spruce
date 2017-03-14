@@ -45,6 +45,13 @@ GIT_CLANG_FORMAT_PROGNAME="git-clang-format"
 
 # Yovo paths to ignore when formatting
 IGNORE_PATHS=' |gtest'
+IGNORE_PATHS="$IGNORE_PATHS|valgrind"
+IGNORE_PATHS="$IGNORE_PATHS|ob-hash.c|ob-hash-city.c|ob-hash-win32.c"
+IGNORE_PATHS="$IGNORE_PATHS|ob-mvtypes.c"
+IGNORE_PATHS="$IGNORE_PATHS|dSFMT.c|dSFMT.h"
+IGNORE_PATHS="$IGNORE_PATHS|test-hash.c"
+IGNORE_PATHS="$IGNORE_PATHS|benchmarks/city"
+IGNORE_PATHS="$IGNORE_PATHS|openssl_hostname_validations"
 
 if [ "$OS" = "Linux" ] ; then
   GIT_CLANG_FORMAT_PROGNAME="$GIT_CLANG_FORMAT_PROGNAME-$CLANG_FORMAT_SHORT_VERSION"
