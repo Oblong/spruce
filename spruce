@@ -528,6 +528,6 @@ _EOF_
         print_help_menu
         exit 1
     fi
-    format_files $*
+    format_files $(ls -d "$@" | egrep -wv "$IGNORE_PATHS")
     ;;
 esac
