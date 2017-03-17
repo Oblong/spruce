@@ -374,11 +374,13 @@ test_clang_format_version
 
 postprocess_stdin() {
   # Work around https://llvm.org/bugs/show_bug.cgi?id=30849
-  $SED_PROGNAME \
-    -e 's/ *OB_PRIVATE :/OB_PRIVATE:\n /g' \
-    -e 's/ *OB_PROTECTED :/OB_PROTECTED:\n /g' \
-    -e 's/ *OB_PUBLIC :/OB_PUBLIC:\n /g' \
-    #
+  # and guard inserting multiple newlines afer muliple runs
+  # Use perl instead of sed because it supports multiline search.
+  perl -0777 -p \
+    -e 's/ *OB_PRIVATE :\n*/OB_PRIVATE:\n/g;' \
+    -e 's/ *OB_PROTECTED :\n*/OB_PROTECTED:\n/g;' \
+    -e 's/ *OB_PUBLIC :\n*/OB_PUBLIC:\n/g;' \
+  #
 }
 
 # Return true if the argument looks like the name of a C/C++/objC file.
