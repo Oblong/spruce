@@ -1,13 +1,10 @@
 #!/bin/sh
-# Wrapper around clang-format to make enforcing new oblong coding style easy
+# Test suite that will pass once we bend clang-format to our will
 
 ./spruce -o tmp spruce_test_pre.cpp
-dif=$(diff spruce_test_post.cpp tmp/spruce_test_pre.cpp)
-if [ "$dif" != "" ] ; then
+if ! diff -u spruce_test_post.cpp tmp/spruce_test_pre.cpp
+then
   echo "FAILED"
-  if [ "$1" == "-v" ] ; then
-    echo "$dif"
-  fi
   exit 1
 fi
 rm -rf tmp
