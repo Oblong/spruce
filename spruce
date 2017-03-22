@@ -1,0 +1,526 @@
+#!/bin/sh
+# Wrapper around clang-format to make enforcing new oblong coding style easy
+
+# Abort on error
+set -e
+
+# Avoid bashisms
+POSIXLY_CORRECT=1
+
+# Running operating system
+OS=$(uname -s)
+
+print_help_menu() {
+  cat <<_EOF_
+Spruce: Don't Let Messes Overstay Their Welcome
+Handy-dandy oblong-specific C++ code beautifier
+See https://gitlab.oblong.com/platform/docs/wikis/coding-style/
+
+usage: spruce [-o outdir] file...     (reformat given files)
+or:    spruce [-o outdir] all         (reformat all files)
+or:    spruce changes                 (reformat all edits, staged and unstaged)
+or:    spruce check [files...]        (list files that need reformatting)
+or:    spruce precommit               (abort if a staged file needs reformatting)
+or:    spruce freebase <sha1_before_reformat> <sha1_after_reformat> <upstream_branch>
+
+'freebase' is for fixing a branch that is stale because upstream was spruced up
+after the branch was created.
+_EOF_
+  if $IN_ERR
+  then
+    exit 1
+  fi
+  exit 0
+}
+
+# Expected version of clang-format
+CLANG_FORMAT_VERSION_DESC="(tags/RELEASE_380/final)"
+CLANG_FORMAT_SHORT_VERSION="3.8"
+CLANG_FORMAT_BREW_PKG="clang-format38"
+
+# Name of clang-format as a binary
+CLANG_FORMAT_PROGNAME="clang-format"
+CLANG_FORMAT_PKGNAME="clang-format"
+GIT_CLANG_FORMAT_PROGNAME="git-clang-format"
+
+# Yovo paths to ignore when formatting
+IGNORE_PATHS=' |gtest'
+
+if [ "$OS" = "Linux" ] ; then
+  GIT_CLANG_FORMAT_PROGNAME="$GIT_CLANG_FORMAT_PROGNAME-$CLANG_FORMAT_SHORT_VERSION"
+  CLANG_FORMAT_PROGNAME="$CLANG_FORMAT_PROGNAME-$CLANG_FORMAT_SHORT_VERSION"
+  CLANG_FORMAT_PKGNAME="$CLANG_FORMAT_PROGNAME"
+  SED_PROGNAME="sed"
+  SED_PKGNAME="sed"
+elif [ "$OS" = "Darwin" ] ; then
+  CLANG_FORMAT_PKGNAME="$CLANG_FORMAT_BREW_PKG"
+  SED_PROGNAME="gsed"
+  SED_PKGNAME="gnu-sed"
+fi
+
+OUTPUT_PATH=""
+IN_ERR=false
+
+case "$1" in
+""|-h|--help)
+    print_help_menu
+    ;;
+-o)
+    shift
+    OUTPUT_PATH=$1
+    shift
+    ;;
+-*)
+    echo "Invalid option: $1" >&2
+    IN_ERR=true
+    print_help_menu
+    ;;
+esac
+
+update_brew() {
+  b=`which brew`
+  if [ "$b" = "" ] ; then
+    msg="ERROR: brew: command not found. Shall I install it for you (y/n)?"
+    printf  "$msg "
+    read ans
+    INVALID=true
+    while $INVALID ; do
+      case "$ans" in
+        y|Y|yes)
+          INVALID=false
+          ;;
+        n|N|no)
+          printf "\nFailed to run clang-format\n"
+          exit 1
+          ;;
+        * )
+          printf  "Invalid Answer. Please answer [y/n]: "
+          read ans
+          ;;
+      esac
+    done
+
+    printf "\nInstalling brew...\n"
+    brew_url="https://raw.githubusercontent.com/Homebrew/install/master/install"
+    /usr/bin/ruby -e "$(curl -fsSL $brew_url)"
+
+    b=`which brew`
+    if [ "$b" = " "] ; then
+      printf "\nFailed to install brew\n"
+      exit 1
+    fi
+  fi
+
+  printf "\nUpdating brew..."
+  brew update
+}
+
+unlink_clang_format() {
+  if [ "$OS" = "Darwin" ] ; then
+    pkg_list=`brew list | grep clang-format`
+    for p in $pkg_list
+    do
+      brew unlink $p
+    done
+  fi
+}
+
+install_clang_format() {
+  printf "\ninstalling clang-format...\n"
+  if [ "$OS" = "Darwin" ] ; then
+    brew tap Homebrew/homebrew-versions
+    brew install $CLANG_FORMAT_PKGNAME
+    if ! $SED_PROGNAME --version > /dev/null 2>&1
+    then
+       brew install $SED_PKGNAME
+    fi
+    brew link $CLANG_FORMAT_PKGNAME
+  elif [ "$OS" = "Linux" ] ; then
+    sudo apt-get install $CLANG_FORMAT_PKGNAME
+    # sed always present
+  fi
+}
+
+test_clang_format_version() {
+  clang_v=$($CLANG_FORMAT_PROGNAME --version || true)
+  case "$clang_v" in
+  *"$CLANG_FORMAT_VERSION_DESC"*) return;;
+  esac
+
+  if [ "$clang_v" = "" ] ; then
+    msg="ERROR: clang-format: command not found. Shall I install it for you (y/n)?"
+  else
+    printf "ERROR: clang-format: wrong version ($clang_v)\n"
+    msg="Shall I install $CLANG_FORMAT_SHORT_VERSION for you (y/n)?"
+    if [ "$OS" = "Darwin" ] ; then
+      msg="$msg (WARNING: Answering yes will unlink your current version)"
+    fi
+  fi
+
+  printf  "$msg "
+  read ans
+  INVALID=true
+  while $INVALID ; do
+    case "$ans" in
+      y|Y|yes)
+        INVALID=false
+        ;;
+      n|N|no)
+        printf "\nFailed to run clang-format\n"
+        exit 1
+        ;;
+      * )
+        printf  "Invalid Answer. Please answer [y/n]: "
+        read ans
+        ;;
+    esac
+  done
+
+  if [ "$OS" = "Darwin" ] ; then
+    update_brew
+    if [ "$clang_v" != "" ] ; then
+      unlink_clang_format
+    fi
+  elif [ "$OS" = "Linux" ] ; then
+    sudo apt-get update
+  fi
+
+  install_clang_format
+  clang_v=$($CLANG_FORMAT_PROGNAME --version)
+
+  case "$clang_v" in
+  *"$CLANG_FORMAT_VERSION_DESC"*)
+    echo "Using Clang Version: $clang_v"
+    ;;
+  *)
+    echo "Wanted clang-format version $CLANG_FORMAT_VERSION_DESC, got $clang_v.  Aborting."
+    exit 1
+    ;;
+  esac
+}
+
+# Logic borrowed from mongodb:
+# https://github.com/mongodb/mongo/blob/master/buildscripts/clang_format.py#L727
+reformat_branch() {
+  printf "\n\nreformat a branch made before a clang-format run..."
+
+  pre=$1
+  post=$2
+  master=$3
+
+  val="`git rev-parse --show-toplevel`"
+  if [ "`pwd`" != "$val" ] ; then
+    printf "\nERROR: Branch reformatting must be done from the repo root:\n  $val\n"
+    exit 1
+  fi
+
+  # if not os.path.exists("buildscripts/clang_format.py"):
+  #     raise ValueError("reformat-branch is only supported in the mongo repo")
+
+  # # Validate that user passes valid commits
+  git cat-file -e $pre > /dev/null 2>&1
+  if [ $? != 0 ] ; then
+    printf "\nERROR: Commit prior to reformat $pre is not a valid commit in this repo\n"
+    exit 1
+  fi
+  git cat-file -e $post > /dev/null 2>&1
+  if [ $? != 0 ] ; then
+    printf "\nERROR: Commit after reformat $post is not a valid commit in this repo\n"
+    exit 1
+  fi
+
+  git merge-base --is-ancestor $pre $post > /dev/null 2>&1
+  if [ $? != 0 ] ; then
+    printf "\nERROR: Commit Prior to Reformat $pre is not a valid ancestor of Commit After"
+    printf "\n       Reformat $post in this repo\n"
+    exit 1
+  fi
+
+  # Validate the user is on a local branch that has the right merge base
+  git symbolic-ref --quiet HEAD > /dev/null 2>&1
+  if [ $? = 1 ] ; then
+    printf "\nERROR: You must not run this script in a detached HEAD state\n"
+    exit 1
+  fi
+
+  # Validate the user has no pending changes
+  git diff --quiet > /dev/null 2>&1
+  if [ $? = 1 ] ; then
+    printf "\nERROR: Your working tree has pending changes. You must have a clean working tree before proceeding.\n"
+    exit 1
+  fi
+
+  val=`git merge-base HEAD $pre` > /dev/null 2>&1
+  if [ "$val" != *"$pre"* ] ; then
+    printf "\nERROR: Please rebase to $pre and resolve all conflicts before running this script\n"
+    exit 1
+  fi
+
+  val=`git merge-base HEAD $master` > /dev/null 2>&1
+  if [ "$val" != *"$pre"* ] ; then
+    printf "\nERROR: This branch appears to already have advanced too far through the merge process\n"
+    exit 1
+  fi
+
+  # Everything looks good so lets start going through all the commits
+  val=`git rev-parse --abbrev-ref HEAD` > /dev/null 2>&1
+  if [ "$val" = "HEAD" ] ; then
+    printf "\nBranch is currently detached\n"
+    exit 1
+  fi
+  new_branch="$val-reformatted"
+
+  git rev-parse --verify $new_branch > /dev/null 2>&1
+  if [ $? = 0 ] ; then
+    printf "\nThe branch $new_branch already exists. Please delete or rename the current branch."
+    exit 1
+  fi
+
+  commits=`git log --reverse --pretty=format:%H $pre..HEAD` > /dev/null 2>&1
+
+  previous_commit_base=$post
+
+  files_match=`find . -type f -iname '*.[ch]' -o -iname '*.cpp' | egrep -wv "$IGNORE_PATHS"`
+
+  # # Go through all the commits the user made on the local branch and migrate to a new branch
+  # # that is based on post_reformat commits instead
+  for c in $commits
+  do
+    printf "\n$c:"
+    git checkout --quiet $c > /dev/null 2>&1
+
+    deleted_files=""
+    # Format each of the files by checking out just a single commit from the user's branch
+    commit_files=`git diff --name-only HEAD~` > /dev/null 2>&1
+    for commit_file in $commit_files
+    do
+      # Format each file needed if it was not deleted
+      if [ ! -e "$commit_file" ] ; then
+        printf "\n  Skipping file $commit_file since it has been deleted in commit '$c'"
+        deleted_files="${deleted_files}$commit_file:"
+        continue
+      fi
+
+      if [ $commit_file != *.[cCh] && $commit_file != *.cpp ] ; then
+        printf "\n  Skipping file $commit_file since it is not a file clang_format should format"
+      else
+        $CLANG_FORMAT_PROGNAME -i $commit_file
+        printf "\n  format $commit_file"
+      fi
+    done
+
+    # Check if anything needed reformatting, and if so amend the commit
+    git diff --quiet > /dev/null 2>&1
+    if [ $? = 0 ] ; then
+      printf "\n  Commit $c needed no reformatting"
+    else
+      git commit --all --amend --no-edit > /dev/null 2>&1
+    fi
+
+    # Rebase our new commit on top the post-reformat commit
+    prev_commit=`git rev-parse HEAD` > /dev/null 2>&1
+
+    # Checkout the new branch with the reformatted commits
+    # Note: we will not name as a branch until we are done with all commits on the local branch
+    git checkout --quiet $previous_commit_base > /dev/null 2>&1
+
+    # Copy each file from the reformatted commit on top of the post reformat
+    diff_files=`git diff --name-only $prev_commit~..$prev_commit`
+    for diff_file in $diff_files
+    do
+      # If the file was deleted in the commit we are reformatting, we need to delete it again
+      if [ "$deleted_files" = *"$diff_file"* ] ; then
+        git rm $diff_file > /dev/null 2>&1
+        continue
+      fi
+
+      # The file has been added or modified, continue as normal
+      file_contents=`git show $prev_commit:$diff_file` > /dev/null 2>&1
+
+      root_dir=$(dirname "$diff_file")
+      if [ ! -e "$root_dir" ] ; then
+        mkdir -p $root_dir
+      fi
+
+      echo "$file_contents" > $diff_file
+
+      git add $diff_file > /dev/null 2>&1
+    done
+
+    # Create a new commit onto clang-formatted branch
+    git commit --reuse-message=$prev_commit > /dev/null 2>&1
+
+    previous_commit_base=`git rev-parse HEAD`
+  done
+
+  # Create a new branch to mark the hashes we have been using
+  git checkout -b $new_branch > /dev/null 2>&1
+
+  printf "\n\nNOTICE:\n-----------------------------------------"
+  printf "\nreformat-branch is done running."
+  printf "\nA copy of your branch has been made named $new_branch, and formatted with clang-format."
+  printf "\nThe original branch has been left unchanged."
+  printf "\nThe next step is to rebase the new branch on 'iz'.\n\n"
+}
+
+test_clang_format_version
+
+postprocess_stdin() {
+  # Work around https://llvm.org/bugs/show_bug.cgi?id=30849
+  $SED_PROGNAME \
+    -e 's/ *OB_PRIVATE :/OB_PRIVATE:\n /g' \
+    -e 's/ *OB_PROTECTED :/OB_PROTECTED:\n /g' \
+    -e 's/ *OB_PUBLIC :/OB_PUBLIC:\n /g' \
+    #
+}
+
+# Return true if the argument looks like the name of a C/C++/objC file.
+# (Note: this is one of several filtering methods in this script.
+# format_changes, precommit, and check without args use their own ways of
+# selecting files.  This one is used if user specifies
+# filenames directly on commandline; it accepts more types than
+# format_changes and precommit do.)
+is_formattable_file() {
+    case "$1" in
+    *.[cChHm])            ;; # .c .C .h .H .m
+    *.[cChH][+pPx][+pPx]) ;; # .cpp .CPP .c++ .cxx .hpp .HPP etc.
+    *.mm)                 ;; # objective-C++
+    *)
+        return 1             # false
+        ;;
+    esac
+    return 0                 # true
+}
+
+format_files() {
+  for f
+  do
+    echo "$f"
+    if ! is_formattable_file "$f"
+    then
+        echo "Skipping $f (filename doesn't look like c/c++/objc)"
+        continue
+    fi
+    outf=$f
+    if [ "$OUTPUT_PATH" = "" ] ; then
+      $CLANG_FORMAT_PROGNAME -i $f
+    else
+      dname=$(dirname "$f")
+      mkdir -p "$OUTPUT_PATH/$dname"
+      outf="$OUTPUT_PATH/$f"
+      $CLANG_FORMAT_PROGNAME $f > $outf
+    fi
+    cat $outf | postprocess_stdin > spruce-tmp.tmp && mv spruce-tmp.tmp $outf
+  done
+}
+
+# Format all staged .C/.c/.h/.cpp files, even if they're in the IGNORE_PATHS
+# FIXME: stop using git-clang-format so we can skip files in IGNORE_PATHS
+format_changes() {
+  $GIT_CLANG_FORMAT_PROGNAME -f --extensions c,cpp,h
+  for outf in $(git status | awk '/modified:/ {print $2}' | egrep -i '\.c$|\.cpp$|\.h$' )
+  do
+    cat $outf | postprocess_stdin > spruce-tmp.tmp && mv spruce-tmp.tmp $outf
+  done
+}
+
+# Print pretty error message to stderr so it doesn't interfere with the list
+# of files, in case someone wants to redirect it to a file.
+print_error_header() {
+  cat >&2 <<"_EOF_"
+ _____________
+< Style Error >
+ -------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+
+Please use spruce to reformat your code.
+See https://gitlab.oblong.com/platform/docs/wikis/coding-style
+
+Offending file(s):
+_EOF_
+}
+
+# Run style check on given files without changing them
+# Abort loudly on style error
+# Exit silently on success
+check_files() {
+  failed=false
+  for f
+  do
+    if ! is_formattable_file "$f"
+    then
+        echo "Skipping $f (filename doesn't look like c/c++/objc)"
+        continue
+    fi
+    if $CLANG_FORMAT_PROGNAME -style=file -output-replacements-xml < $f |
+      grep "<replacement " > /dev/null
+    then
+      if ! $failed
+      then
+        failed=true
+        print_error_header
+      fi
+      echo $f
+    fi
+  done
+  if $failed
+  then
+    exit 1
+  fi
+}
+
+case "$1" in
+  all)
+    # format all .C/.c/.h/.cpp files that are not in the IGNORE_PATHS
+    files=$(find . -type f -iname '*.[ch]' -o -iname '*.cpp' | egrep -wv "$IGNORE_PATHS")
+    format_files ${files}
+    ;;
+  changes)
+    format_changes
+    ;;
+  precommit)
+    # Check all staged .C/.c/.h/.cpp files that are not in the IGNORE_PATHS
+    if files=$(git diff --name-only HEAD --diff-filter=AM | egrep -i '\.[ch]$|\.cpp$' | egrep -wv "$IGNORE_PATHS")
+    then
+      check_files $files
+    fi
+    ;;
+  check)
+    shift
+    # Check given .C/.c/.h/.cpp files (default: all that are not in the IGNORE_PATHS)
+    if test "$*" = ""
+    then
+        files=$(find . -type f -iname '*.[ch]' -o -iname '*.cpp' | sed 's,^\./,,' | egrep -wv "$IGNORE_PATHS")
+    else
+        files="$*"
+    fi
+    check_files $files
+    ;;
+  freebase)
+    # Fix a branch whose upstream has since been reformatted
+    if [ $# -ne 3 ] ; then
+      cat <<_EOF_
+ERROR: freebase takes 3 args: sha1_before_reformat sha1_after_reformat upstream_branch
+but you provided: $@
+
+_EOF_
+      IN_ERR=true
+      print_help_menu
+    fi
+    reformat_branch $1 $2 $3
+    ;;
+  *)
+    if ! test -f $1
+    then
+        echo "ERROR: $1 is not a file or command?"
+        echo ""
+        print_help_menu
+        exit 1
+    fi
+    format_files $*
+    ;;
+esac
