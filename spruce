@@ -82,9 +82,7 @@ cat_style_file() {
 
 # Get style suitable for -style=, but less legible
 cat_style_string() {
-   echo '{'
-   tr '\012' ',' < $CLANG_FORMAT_STYLE_FILE | sed 's/,$//'
-   echo '}'
+   tr '\012' ',' < $CLANG_FORMAT_STYLE_FILE | sed 's/^/{/;s/,$/}/'
 }
 
 # Our format is embedded in this script in alphabetical order.
