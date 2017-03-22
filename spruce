@@ -34,6 +34,9 @@ _EOF_
 }
 
 # Expected version of clang-format
+#CLANG_FORMAT_VERSION_DESC="(tags/google/stable/2016-12-09)"
+#CLANG_FORMAT_SHORT_VERSION="4.0.0"
+#CLANG_FORMAT_BREW_PKG="clang-format"
 CLANG_FORMAT_VERSION_DESC="(tags/RELEASE_380/final)"
 CLANG_FORMAT_SHORT_VERSION="3.8"
 CLANG_FORMAT_BREW_PKG="clang-format38"
@@ -141,7 +144,7 @@ install_clang_format() {
     then
        brew install $SED_PKGNAME
     fi
-    brew link $CLANG_FORMAT_PKGNAME
+    brew link --force $CLANG_FORMAT_PKGNAME
   elif [ "$OS" = "Linux" ] ; then
     sudo apt-get install $CLANG_FORMAT_PKGNAME
     # sed always present
@@ -377,9 +380,12 @@ postprocess_stdin() {
   # and guard inserting multiple newlines afer muliple runs
   # Use perl instead of sed because it supports multiline search.
   perl -0777 -p \
-    -e 's/ *OB_PRIVATE :\n*/OB_PRIVATE:\n/g;' \
-    -e 's/ *OB_PROTECTED :\n*/OB_PROTECTED:\n/g;' \
-    -e 's/ *OB_PUBLIC :\n*/OB_PUBLIC:\n/g;' \
+    -e 's/  OB_PRIVATE :\n*/OB_PRIVATE:\n /g;' \
+    -e 's/  OB_PROTECTED :\n*/OB_PROTECTED:\n /g;' \
+    -e 's/  OB_PUBLIC :\n*/OB_PUBLIC:\n /g;' \
+    # -e 's/ *OB_PRIVATE :\n*/OB_PRIVATE:\n/g;' \
+    # -e 's/ *OB_PROTECTED :\n*/OB_PROTECTED:\n/g;' \
+    # -e 's/ *OB_PUBLIC :\n*/OB_PUBLIC:\n/g;' \
   #
 }
 
