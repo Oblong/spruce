@@ -22,6 +22,7 @@ or:    spruce changes                 (reformat all edits, staged and unstaged)
 or:    spruce check [files...]        (list files that need reformatting)
 or:    spruce precommit               (abort if a staged file needs reformatting)
 or:    spruce freebase <sha1_before_reformat> <sha1_after_reformat> <upstream_branch>
+or:    spruce style                   (output our .clang-format to stdout)
 
 'freebase' is for fixing a branch that is stale because upstream was spruced up
 after the branch was created.
@@ -34,6 +35,7 @@ _EOF_
 }
 
 # Expected version of clang-format
+# note: Must match debian/control
 #CLANG_FORMAT_VERSION_DESC="(tags/google/stable/2016-12-09)"
 #CLANG_FORMAT_SHORT_VERSION="4.0.0"
 #CLANG_FORMAT_BREW_PKG="clang-format"
@@ -46,6 +48,14 @@ CLANG_FORMAT_PROGNAME="clang-format"
 CLANG_FORMAT_PKGNAME="clang-format"
 GIT_CLANG_FORMAT_PROGNAME="git-clang-format"
 
+if [ "$OS" = "Linux" ] ; then
+  GIT_CLANG_FORMAT_PROGNAME="$GIT_CLANG_FORMAT_PROGNAME-$CLANG_FORMAT_SHORT_VERSION"
+  CLANG_FORMAT_PROGNAME="$CLANG_FORMAT_PROGNAME-$CLANG_FORMAT_SHORT_VERSION"
+  CLANG_FORMAT_PKGNAME="$CLANG_FORMAT_PROGNAME"
+elif [ "$OS" = "Darwin" ] ; then
+  CLANG_FORMAT_PKGNAME="$CLANG_FORMAT_BREW_PKG"
+fi
+
 # Yovo paths to ignore when formatting
 IGNORE_PATHS=' |gtest'
 IGNORE_PATHS="$IGNORE_PATHS|valgrind"
@@ -56,17 +66,103 @@ IGNORE_PATHS="$IGNORE_PATHS|test-hash.c"
 IGNORE_PATHS="$IGNORE_PATHS|benchmarks/city"
 IGNORE_PATHS="$IGNORE_PATHS|openssl_hostname_validations"
 
-if [ "$OS" = "Linux" ] ; then
-  GIT_CLANG_FORMAT_PROGNAME="$GIT_CLANG_FORMAT_PROGNAME-$CLANG_FORMAT_SHORT_VERSION"
-  CLANG_FORMAT_PROGNAME="$CLANG_FORMAT_PROGNAME-$CLANG_FORMAT_SHORT_VERSION"
-  CLANG_FORMAT_PKGNAME="$CLANG_FORMAT_PROGNAME"
-  SED_PROGNAME="sed"
-  SED_PKGNAME="sed"
-elif [ "$OS" = "Darwin" ] ; then
-  CLANG_FORMAT_PKGNAME="$CLANG_FORMAT_BREW_PKG"
-  SED_PROGNAME="gsed"
-  SED_PKGNAME="gnu-sed"
-fi
+# Helpers to take our format string where it needs to go
+
+# Pick a place for the file, and remove it when we exit
+CLANG_FORMAT_STYLE_FILE=/tmp/spruce.clang-format.$$
+cleanup_style() {
+    rm -f "$CLANG_FORMAT_STYLE_FILE"
+}
+trap cleanup_style 0
+
+# Get style suitable for users to put in ~/.clang-format if they wish
+cat_style_file() {
+   cat $CLANG_FORMAT_STYLE_FILE
+}
+
+# Get style suitable for -style=, but less legible
+cat_style_string() {
+   echo '{'
+   tr '\012' ',' < $CLANG_FORMAT_STYLE_FILE | sed 's/,$//'
+   echo '}'
+}
+
+# Our format is embedded in this script in alphabetical order.
+# We turn this into a single line by joining with commas, so
+#  - maps are a bit funny
+#  - we can't use comments inside this style, so put 'em here
+
+#--- style comments follow ---
+# AlwaysBreakBeforeMultilineStrings: false # true forces line breaks after OB_FMT_64
+# BraceWrapping:
+#  AfterEnum: 'true'                       # Broken: https://bugs.llvm.org/show_bug.cgi?id=27381
+#--- end of style comments ---
+# And finally, our style:
+cat > "$CLANG_FORMAT_STYLE_FILE" <<_EOF_
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: 'false'
+AlignConsecutiveDeclarations: 'false'
+AlignEscapedNewlinesLeft: 'false'
+AlignOperands: 'true'
+AlignTrailingComments: 'true'
+AllowAllParametersOfDeclarationOnNextLine: 'false'
+AllowShortBlocksOnASingleLine: 'true'
+AllowShortCaseLabelsOnASingleLine: 'false'
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: 'false'
+AllowShortLoopsOnASingleLine: 'false'
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: 'true'
+AlwaysBreakTemplateDeclarations: 'true'
+BinPackArguments: 'true'
+BinPackParameters: 'true'
+BreakBeforeBinaryOperators: All
+BraceWrapping: {AfterClass: 'true'
+  AfterControlStatement: 'true'
+  AfterEnum: 'true'
+  AfterFunction: 'true'
+  AfterNamespace: 'false'
+  AfterObjCDeclaration: 'true'
+  AfterStruct: 'true'
+  AfterUnion: 'true'
+  BeforeCatch: 'true'
+  BeforeElse: 'true'
+  IndentBraces: 'true'}
+BreakBeforeBraces: Custom
+BreakBeforeTernaryOperators: 'true'
+BreakConstructorInitializersBeforeComma: 'false'
+ColumnLimit: '80'
+ConstructorInitializerAllOnOneLineOrOnePerLine: 'true'
+ConstructorInitializerIndentWidth: '4'
+ContinuationIndentWidth: '2'
+Cpp11BracedListStyle: 'true'
+DerivePointerAlignment: 'false'
+ExperimentalAutoDetectBinPacking: 'false'
+IndentCaseLabels: 'true'
+IndentWidth: '2'
+IndentWrappedFunctionNames: 'false'
+KeepEmptyLinesAtTheStartOfBlocks: 'false'
+Language: Cpp
+MaxEmptyLinesToKeep: '3'
+NamespaceIndentation: None
+PointerAlignment: Right
+ReflowComments: 'false'
+SortIncludes: 'false'
+SpaceAfterCStyleCast: 'true'
+SpaceBeforeAssignmentOperators: 'true'
+SpaceBeforeParens: Always
+SpaceInEmptyParentheses: 'false'
+SpacesBeforeTrailingComments: '2'
+SpacesInAngles: 'false'
+SpacesInCStyleCastParentheses: 'false'
+SpacesInParentheses: 'false'
+SpacesInSquareBrackets: 'false'
+Standard: Cpp11
+TabWidth: '2'
+UseTab: Never
+_EOF_
+
 
 OUTPUT_PATH=""
 IN_ERR=false
@@ -115,7 +211,7 @@ update_brew() {
     /usr/bin/ruby -e "$(curl -fsSL $brew_url)"
 
     b=`which brew`
-    if [ "$b" = " "] ; then
+    if [ "$b" = " " ] ; then
       printf "\nFailed to install brew\n"
       exit 1
     fi
@@ -140,14 +236,9 @@ install_clang_format() {
   if [ "$OS" = "Darwin" ] ; then
     brew tap Homebrew/homebrew-versions
     brew install $CLANG_FORMAT_PKGNAME
-    if ! $SED_PROGNAME --version > /dev/null 2>&1
-    then
-       brew install $SED_PKGNAME
-    fi
     brew link --force $CLANG_FORMAT_PKGNAME
   elif [ "$OS" = "Linux" ] ; then
     sudo apt-get install $CLANG_FORMAT_PKGNAME
-    # sed always present
   fi
 }
 
@@ -314,7 +405,7 @@ reformat_branch() {
       if [ $commit_file != *.[cCh] && $commit_file != *.cpp ] ; then
         printf "\n  Skipping file $commit_file since it is not a file clang_format should format"
       else
-        $CLANG_FORMAT_PROGNAME -i $commit_file
+        $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -i $commit_file
         printf "\n  format $commit_file"
       fi
     done
@@ -378,14 +469,12 @@ test_clang_format_version
 postprocess_stdin() {
   # Work around https://llvm.org/bugs/show_bug.cgi?id=30849
   # and guard inserting multiple newlines afer muliple runs
-  # Use perl instead of sed because it supports multiline search.
+  # Use perl instead of sed because it supports multiline search
+  # and is present by default on linux and mac.
   perl -0777 -p \
     -e 's/  OB_PRIVATE :\n*/OB_PRIVATE:\n /g;' \
     -e 's/  OB_PROTECTED :\n*/OB_PROTECTED:\n /g;' \
     -e 's/  OB_PUBLIC :\n*/OB_PUBLIC:\n /g;' \
-    # -e 's/ *OB_PRIVATE :\n*/OB_PRIVATE:\n/g;' \
-    # -e 's/ *OB_PROTECTED :\n*/OB_PROTECTED:\n/g;' \
-    # -e 's/ *OB_PUBLIC :\n*/OB_PUBLIC:\n/g;' \
   #
 }
 
@@ -418,12 +507,12 @@ format_files() {
     fi
     outf=$f
     if [ "$OUTPUT_PATH" = "" ] ; then
-      $CLANG_FORMAT_PROGNAME -i $f
+      $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -i $f
     else
       dname=$(dirname "$f")
       mkdir -p "$OUTPUT_PATH/$dname"
       outf="$OUTPUT_PATH/$f"
-      $CLANG_FORMAT_PROGNAME $f > $outf
+      $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" $f > $outf
     fi
     cat $outf | postprocess_stdin > spruce-tmp.tmp && mv spruce-tmp.tmp $outf
   done
@@ -432,7 +521,7 @@ format_files() {
 # Format all staged .C/.c/.h/.cpp files, even if they're in the IGNORE_PATHS
 # FIXME: stop using git-clang-format so we can skip files in IGNORE_PATHS
 format_changes() {
-  $GIT_CLANG_FORMAT_PROGNAME -f --extensions c,cpp,h
+  $GIT_CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -f --extensions c,cpp,h
   for outf in $(git status | awk '/modified:/ {print $2}' | egrep -i '\.c$|\.cpp$|\.h$' )
   do
     cat $outf | postprocess_stdin > spruce-tmp.tmp && mv spruce-tmp.tmp $outf
@@ -471,7 +560,7 @@ check_files() {
         echo "Skipping $f (filename doesn't look like c/c++/objc)"
         continue
     fi
-    if $CLANG_FORMAT_PROGNAME -style=file -output-replacements-xml < $f |
+    if $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -output-replacements-xml < $f |
       grep "<replacement " > /dev/null
     then
       if ! $failed
@@ -489,6 +578,9 @@ check_files() {
 }
 
 case "$1" in
+  style)
+    cat_style_file
+    ;;
   all)
     # format all .C/.c/.h/.cpp files that are not in the IGNORE_PATHS
     files=$(find . -type f -iname '*.[ch]' -o -iname '*.cpp' | egrep -wv "$IGNORE_PATHS")
