@@ -3,6 +3,7 @@ Section: non-free
 Priority: extra
 Maintainer: Dan Kegel <dank@oblong.com>
 Build-Depends: build-essential,
+   clang-format-3.8,
    debhelper (>= 8.0.0),
    devscripts,
 Standards-Version: 3.9.4
@@ -10,6 +11,6 @@ Standards-Version: 3.9.4
 Package: oblong-spruce
 Architecture: all
 Depends: ${misc:Depends},
-   clang-format-3.8
+   clang-format-3.8,
 Description: Oblong-specific code formatting tool
  Simple wrapper around clang-format
