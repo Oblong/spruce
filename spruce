@@ -16,16 +16,21 @@ Spruce: Don't Let Messes Overstay Their Welcome
 Handy-dandy oblong-specific C++ code beautifier
 See https://gitlab.oblong.com/platform/docs/wikis/coding-style/
 
-usage: spruce [-o outdir] file...     (reformat given files)
-or:    spruce [-o outdir] all         (reformat all files)
-or:    spruce changes                 (reformat all edits, staged and unstaged)
-or:    spruce check [files...]        (list files that need reformatting)
-or:    spruce precommit               (abort if a staged file needs reformatting)
+usage: spruce [-o outdir] file...         (reformat given files)
+or:    spruce [-o outdir] all             (reformat all files)
+or:    spruce changes                     (reformat all edits, staged and unstaged)
+or:    spruce check [files...]            (list files that need reformatting)
+or:    spruce precommit                   (abort if a staged file needs reformatting)
 or:    spruce freebase <sha1_before_reformat> <sha1_after_reformat> <upstream_branch>
-or:    spruce style                   (output our .clang-format to stdout)
+or:    spruce plugin (emacs|vim|sublime)  (custom plugin support)
+or:    spruce style                       (output our .clang-format to stdout)
 
 'freebase' is for fixing a branch that is stale because upstream was spruced up
 after the branch was created.
+
+'plugin' has options for emacs, vim or sublime:
+    'sublime': produces a file, 'clang_format_custom.sublime-settings' which
+               should be used with the plugin: https://packagecontrol.io/packages/Clang%20Format
 _EOF_
   if $IN_ERR
   then
@@ -533,6 +538,39 @@ format_changes() {
   done
 }
 
+reformat_sublime() {
+  perl -0777 -p \
+    -e 's/\n/,\n/g;' \
+    -e 's/{/"{/g;' \
+    -e 's/}/}"/g;' \
+    #
+}
+
+deploy_plugin() {
+  case "$1" in
+    emacs)
+      echo "ERROR: emacs not yet supported"
+      ;;
+    vim)
+      echo "ERROR: vim not yet supported"
+      ;;
+    sublime)
+      sub_conf=$(cat_style_file | reformat_sublime | awk '!/'\'\''/ { print "  "$0 }')
+      echo "{\n$sub_conf\n}"  > clang_format_custom.sublime-settings
+      ;;
+    *)
+      cat <<_EOF_
+ERROR: plugin takes an argument to specify the IDE.
+Options are: 'emacs', 'vim', or 'sublime'
+You provided: '$1'
+
+_EOF_
+      print_help_menu
+      exit 1
+      ;;
+  esac
+}
+
 # Print pretty error message to stderr so it doesn't interfere with the list
 # of files, in case someone wants to redirect it to a file.
 print_error_header() {
@@ -585,6 +623,19 @@ check_files() {
 case "$1" in
   style)
     cat_style_file
+    ;;
+  plugin)
+    # Provide plugin support for given IDE
+    if [ $# -ne 2 ] ; then
+      cat <<_EOF_
+ERROR: plugin takes an argument to specify the IDE.
+Options are: 'emacs', 'vim', or 'sublime'
+
+_EOF_
+      IN_ERR=true
+      print_help_menu
+    fi
+    deploy_plugin $2
     ;;
   all)
     # format all .C/.c/.h/.cpp files that are not in the IGNORE_PATHS
