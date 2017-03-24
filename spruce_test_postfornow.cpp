@@ -6,25 +6,25 @@ namespace spruce {
 
 class Spruce : public Truce
 {
-public:
+ public:
   int32 var1;
   float64 var2;
 
-OB_PROTECTED:
+ OB_PROTECTED:
   int32 var3;
   float64 var4;
 
   class Bruce
   {
-  OB_PROTECTED:
+   OB_PROTECTED:
   int32 b1;
     int32 b2;
 
-  public:
+   public:
     Bruce () { b1 = b2 = 0; }
   };
 
-OB_PRIVATE:
+ OB_PRIVATE:
      /**
    * this is var5. it holds data.
    */
@@ -32,7 +32,7 @@ OB_PRIVATE:
   float64 var6;
   Bruce *bruce;
 
-public:
+ public:
   /**
    * constructor
    */
@@ -49,11 +49,11 @@ public:
     var1 = 0;
   }
 
-OB_PROTECTED:
+ OB_PROTECTED:
   void ProtectThisHouse ();
   void OnGuard ();
 
-OB_PRIVATE:
+ OB_PRIVATE:
      void
     TheBathroomDoorReadsOccupied ();
   void DontOpenIt ();

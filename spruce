@@ -103,7 +103,7 @@ cat_style_string() {
 # And finally, our style:
 cat > "$CLANG_FORMAT_STYLE_FILE" <<_EOF_
 Language: Cpp
-AccessModifierOffset: -2
+AccessModifierOffset: -1
 AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
@@ -482,9 +482,9 @@ postprocess_stdin() {
   # Use perl instead of sed because it supports multiline search
   # and is present by default on linux and mac.
   perl -0777 -p \
-    -e 's/  OB_PRIVATE :\n*/OB_PRIVATE:\n /g;' \
-    -e 's/  OB_PROTECTED :\n*/OB_PROTECTED:\n /g;' \
-    -e 's/  OB_PUBLIC :\n*/OB_PUBLIC:\n /g;' \
+    -e 's/  OB_PRIVATE :\n*/ OB_PRIVATE:\n /g;' \
+    -e 's/  OB_PROTECTED :\n*/ OB_PROTECTED:\n /g;' \
+    -e 's/  OB_PUBLIC :\n*/ OB_PUBLIC:\n /g;' \
   #
 }
 
