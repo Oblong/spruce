@@ -476,15 +476,50 @@ reformat_branch() {
 
 test_clang_format_version
 
+preprocess_stdin() {
+  # Work around https://llvm.org/bugs/show_bug.cgi?id=30849
+  # This cleans up the case where there's an OB_P* followed by
+  # new lines or comments, which clang-format has no idea what to
+  # do with. So we insert a unique spruce varaible before the
+  # new line or comment for the post-processing to remove later.
+  # This seems like a better option than practically writing our
+  # own c++ compiler to figure out when clang-format screwed up.
+  perl -e 'while (<STDIN>) {
+            if ($prefice && ((/^$/) || (/( *)\/[\/\*]/))) {
+              print "int32 SPRUCE_IT\;$_";
+              next;
+            };
+            if ($prefice) { $prefice=0; };
+            if (/OB_P(RIVATE|ROTECTED|UBLIC):/) { $prefice=1; };
+            print;
+          }'
+  #
+}
+
 postprocess_stdin() {
   # Work around https://llvm.org/bugs/show_bug.cgi?id=30849
   # and guard inserting multiple newlines afer muliple runs
   # Use perl instead of sed because it supports multiline search
   # and is present by default on linux and mac.
+  # This does the following:
+  #   1-3: for OB_P* with trailing information, delete the space
+  #        before the colon, remove one space before the OB_P*, and
+  #        put the trailing information on the next line, indented
+  #        accordingly
+  #   4-6: Same as 1-3 but for the case where there isn't anything
+  #        trailing on the line.
+  #   5-6: Find lines containing our pre-processed spruce string
+  #        and delete the string, leaving just a new line or comment
   perl -0777 -p \
-    -e 's/  OB_PRIVATE :\n*/ OB_PRIVATE:\n /g;' \
-    -e 's/  OB_PROTECTED :\n*/ OB_PROTECTED:\n /g;' \
-    -e 's/  OB_PUBLIC :\n*/ OB_PUBLIC:\n /g;' \
+    -e 's/( *)(  OB_PRIVATE :)(.+\n)/$1 OB_PRIVATE:\n$1 $3/g;' \
+    -e 's/( *)(  OB_PROTECTED :)(.+\n)/$1 OB_PROTECTED:\n$1 $3/g;' \
+    -e 's/( *)(  OB_PUBLIC :)(.+\n)/$1 OB_PUBLIC:\n$1 $3/g;' \
+    -e 's/( *)(  OB_PRIVATE :\n)/$1 OB_PRIVATE:\n/g;' \
+    -e 's/( *)(  OB_PROTECTED :\n)/$1 OB_PROTECTED:\n/g;' \
+    -e 's/( *)(  OB_PUBLIC :\n)/$1 OB_PUBLIC:\n/g;' \
+  | perl -p \
+    -e 's/( *)(int32 SPRUCE_IT\;\n)/\n/g;' \
+    -e 's/( *)(int32 SPRUCE_IT\;)( *)(.+)/$1$4/g;' \
   #
 }
 
@@ -517,12 +552,14 @@ format_files() {
     fi
     outf=$f
     if [ "$OUTPUT_PATH" = "" ] ; then
+      cat $outf | preprocess_stdin > spruce-tmp.tmp && mv spruce-tmp.tmp $outf
       $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -i $f
     else
       dname=$(dirname "$f")
       mkdir -p "$OUTPUT_PATH/$dname"
       outf="$OUTPUT_PATH/$f"
-      $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" $f > $outf
+      cat $f | preprocess_stdin > spruce-tmp.tmp && mv spruce-tmp.tmp $outf
+      $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -i $outf
     fi
     cat $outf | postprocess_stdin > spruce-tmp.tmp && mv spruce-tmp.tmp $outf
   done
@@ -531,9 +568,17 @@ format_files() {
 # Format all staged .C/.c/.h/.cpp files, even if they're in the IGNORE_PATHS
 # FIXME: stop using git-clang-format so we can skip files in IGNORE_PATHS
 format_changes() {
-  $GIT_CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -f --extensions c,cpp,h
-  for outf in $(git status | awk '/modified:/ {print $2}' | egrep -i '\.c$|\.cpp$|\.h$' )
+#  $GIT_CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -f --extensions c,cpp,h
+  for outf in $(git status | awk '/modified:/ {print $2}' | egrep -wv "$IGNORE_PATHS" )
   do
+    echo $outf
+    if ! is_formattable_file "$outf"
+    then
+        echo "Skipping $outf (filename doesn't look like c/c++/objc)"
+        continue
+    fi
+    cat $outf | preprocess_stdin > spruce-tmp.tmp && mv spruce-tmp.tmp $outf
+    $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -i $outf
     cat $outf | postprocess_stdin > spruce-tmp.tmp && mv spruce-tmp.tmp $outf
   done
 }

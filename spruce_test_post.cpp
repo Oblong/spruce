@@ -10,17 +10,41 @@ class Spruce : public Truce
   int32 var1;
   float64 var2;
 
+  struct struce
+  {
+   OB_PROTECTED:
+
+
+    int32 b1;
+    int32 b2;
+
+    struct struce2
+    {
+     OB_PRIVATE:
+      float32 pub;
+     OB_PUBLIC:
+      /** accessor
+       */
+      float32 Pub (){return pub};
+    }
+
+    public : struce ()
+    {
+      b1 = b2 = 0;
+    }
+  };
+
  OB_PROTECTED:
   int32 var3;
   float64 var4;
 
   class Bruce
   {
-  OB_PROTECTED:
+   OB_PROTECTED:
     int32 b1;
     int32 b2;
 
-  public:
+   public:
     Bruce () { b1 = b2 = 0; }
   };
 
@@ -33,9 +57,9 @@ class Spruce : public Truce
   Bruce *bruce;
 
  public:
-  /**
-   * constructor
-   */
+  //
+  // constructor
+  //
   Spruce ()
   {
     var1 = var3 = var5 = 0;
@@ -50,10 +74,14 @@ class Spruce : public Truce
   }
 
  OB_PROTECTED:
+  //
+  // underarmor
+  //
   void ProtectThisHouse ();
   void OnGuard ();
 
  OB_PRIVATE:
+
   void TheBathroomDoorReadsOccupied ();
   void DontOpenIt ();
 };
