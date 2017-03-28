@@ -194,7 +194,7 @@ case "$1" in
 esac
 
 update_brew() {
-  b=`which brew`
+  b=$(which brew)
   if [ "$b" = "" ] ; then
     msg="ERROR: brew: command not found. Shall I install it for you (y/n)?"
     printf  "$msg "
@@ -220,7 +220,7 @@ update_brew() {
     brew_url="https://raw.githubusercontent.com/Homebrew/install/master/install"
     /usr/bin/ruby -e "$(curl -fsSL $brew_url)"
 
-    b=`which brew`
+    b=$(which brew)
     if [ "$b" = " " ] ; then
       printf "\nFailed to install brew\n"
       exit 1
@@ -233,7 +233,7 @@ update_brew() {
 
 unlink_clang_format() {
   if [ "$OS" = "Darwin" ] ; then
-    pkg_list=`brew list | grep clang-format`
+    pkg_list=$(brew list | grep clang-format)
     for p in $pkg_list
     do
       brew unlink $p
@@ -319,8 +319,8 @@ reformat_branch() {
   post=$2
   master=$3
 
-  val="`git rev-parse --show-toplevel`"
-  if [ "`pwd`" != "$val" ] ; then
+  val="$(git rev-parse --show-toplevel)"
+  if [ "$(pwd)" != "$val" ] ; then
     printf "\nERROR: Branch reformatting must be done from the repo root:\n  $val\n"
     exit 1
   fi
@@ -361,20 +361,20 @@ reformat_branch() {
     exit 1
   fi
 
-  val=`git merge-base HEAD $pre` > /dev/null 2>&1
+  val=$(git merge-base HEAD $pre) > /dev/null 2>&1
   if [ "$val" != *"$pre"* ] ; then
     printf "\nERROR: Please rebase to $pre and resolve all conflicts before running this script\n"
     exit 1
   fi
 
-  val=`git merge-base HEAD $master` > /dev/null 2>&1
+  val=$(git merge-base HEAD $master) > /dev/null 2>&1
   if [ "$val" != *"$pre"* ] ; then
     printf "\nERROR: This branch appears to already have advanced too far through the merge process\n"
     exit 1
   fi
 
   # Everything looks good so lets start going through all the commits
-  val=`git rev-parse --abbrev-ref HEAD` > /dev/null 2>&1
+  val=$(git rev-parse --abbrev-ref HEAD) > /dev/null 2>&1
   if [ "$val" = "HEAD" ] ; then
     printf "\nBranch is currently detached\n"
     exit 1
@@ -387,11 +387,11 @@ reformat_branch() {
     exit 1
   fi
 
-  commits=`git log --reverse --pretty=format:%H $pre..HEAD` > /dev/null 2>&1
+  commits=$(git log --reverse --pretty=format:%H $pre..HEAD) > /dev/null 2>&1
 
   previous_commit_base=$post
 
-  files_match=`find . -type f -iname '*.[ch]' -o -iname '*.cpp' | egrep -wv "$IGNORE_PATHS"`
+  files_match=$(find . -type f -iname '*.[ch]' -o -iname '*.cpp' | egrep -wv "$IGNORE_PATHS")
 
   # # Go through all the commits the user made on the local branch and migrate to a new branch
   # # that is based on post_reformat commits instead
@@ -402,7 +402,7 @@ reformat_branch() {
 
     deleted_files=""
     # Format each of the files by checking out just a single commit from the user's branch
-    commit_files=`git diff --name-only HEAD~` > /dev/null 2>&1
+    commit_files=$(git diff --name-only HEAD~) > /dev/null 2>&1
     for commit_file in $commit_files
     do
       # Format each file needed if it was not deleted
@@ -429,14 +429,14 @@ reformat_branch() {
     fi
 
     # Rebase our new commit on top the post-reformat commit
-    prev_commit=`git rev-parse HEAD` > /dev/null 2>&1
+    prev_commit=$(git rev-parse HEAD) > /dev/null 2>&1
 
     # Checkout the new branch with the reformatted commits
     # Note: we will not name as a branch until we are done with all commits on the local branch
     git checkout --quiet $previous_commit_base > /dev/null 2>&1
 
     # Copy each file from the reformatted commit on top of the post reformat
-    diff_files=`git diff --name-only $prev_commit~..$prev_commit`
+    diff_files=$(git diff --name-only $prev_commit~..$prev_commit)
     for diff_file in $diff_files
     do
       # If the file was deleted in the commit we are reformatting, we need to delete it again
@@ -446,7 +446,7 @@ reformat_branch() {
       fi
 
       # The file has been added or modified, continue as normal
-      file_contents=`git show $prev_commit:$diff_file` > /dev/null 2>&1
+      file_contents=$(git show $prev_commit:$diff_file) > /dev/null 2>&1
 
       root_dir=$(dirname "$diff_file")
       if [ ! -e "$root_dir" ] ; then
@@ -461,7 +461,7 @@ reformat_branch() {
     # Create a new commit onto clang-formatted branch
     git commit --reuse-message=$prev_commit > /dev/null 2>&1
 
-    previous_commit_base=`git rev-parse HEAD`
+    previous_commit_base=$(git rev-parse HEAD)
   done
 
   # Create a new branch to mark the hashes we have been using
