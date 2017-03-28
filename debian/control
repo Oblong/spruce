@@ -6,6 +6,7 @@ Build-Depends: build-essential,
    clang-format-3.8,
    debhelper (>= 8.0.0),
    devscripts,
+   shellcheck,
 Standards-Version: 3.9.4
 
 Package: oblong-spruce

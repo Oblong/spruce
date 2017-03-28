@@ -1,5 +1,6 @@
 #!/bin/sh
 # Test suite!
+set -ex
 
 # Trivial test framework
 terminate_fail()
@@ -14,24 +15,24 @@ terminate_success()
 }
 pass() {
     # expected success
-    echo "PASS: $@"
+    echo "PASS: $*"
 }
 fail() {
     # unexpected failure
-    echo "FAIL: $@"
+    echo "FAIL: $*"
     terminate_fail
 }
 xpass() {
-    echo "XPASS: unexpected success: $@"
+    echo "XPASS: unexpected success: $*"
     terminate_fail
 }
 xfail() {
-    echo "XFAIL: expected failure: $@"
+    echo "XFAIL: expected failure: $*"
 }
 # End trivial test framework
 
 cleanup() {
-  rm -rf tmp
+  rm -rf tmp bletch.tmp
 }
 trap cleanup 0
 
@@ -43,5 +44,30 @@ then
 else
   fail "Woopsie Daisy! Something done got regressed"
 fi
+
+## Test freebase
+# 1. Create a git repo wif summat in't
+rm -rf bletch.tmp
+mkdir bletch.tmp
+cd bletch.tmp
+git init
+cp ../spruce_test_pre.cpp spruce_test.cpp
+git add spruce_test.cpp
+git commit -m 'first commit!'
+# 2. branch it
+git checkout -b branch2
+# 3. mutate branch 2 one way
+sed -i.bak -e 's/TheBathroomDoorReadsOccupied/TheBathroomDoorReadsOccupado/' spruce_test.cpp
+git commit -a -m "branch 2 went spanish"
+# 3. spruce master
+git checkout master
+before=$(git log -n 1 --format=%H)
+../spruce spruce_test.cpp
+git commit -a -m "master reformatted"
+after=$(git log -n 1 --format=%H)
+# 4. now explode
+git checkout branch2
+sh -x ../spruce freebase "$before" "$after" master
+# 5. ideally we'd check something here, but I'm just happy it didn't crash :-)
 
 terminate_success

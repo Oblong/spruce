@@ -236,10 +236,9 @@ update_brew() {
 
 unlink_clang_format() {
   if [ "$OS" = "Darwin" ] ; then
-    pkg_list=$(brew list | grep clang-format)
-    for p in $pkg_list
+    for p in $(brew list | grep clang-format)
     do
-      brew unlink $p
+      brew unlink "$p"
     done
   fi
 }
@@ -328,17 +327,17 @@ reformat_branch() {
   # if not os.path.exists("buildscripts/clang_format.py"):
   #     raise ValueError("reformat-branch is only supported in the mongo repo")
 
-  # # Validate that user passes valid commits
-  git cat-file -e $pre > /dev/null 2>&1
+  # Validate that user passes valid commits
+  git cat-file -e "$pre" > /dev/null 2>&1
   if [ $? != 0 ] ; then
     abort "ERROR: Commit prior to reformat $pre is not a valid commit in this repo"
   fi
-  git cat-file -e $post > /dev/null 2>&1
+  git cat-file -e "$post" > /dev/null 2>&1
   if [ $? != 0 ] ; then
     abort "ERROR: Commit after reformat $post is not a valid commit in this repo\n"
   fi
 
-  git merge-base --is-ancestor $pre $post > /dev/null 2>&1
+  git merge-base --is-ancestor "$pre" "$post" > /dev/null 2>&1
   if [ $? != 0 ] ; then
     abort "ERROR: Commit Prior to Reformat $pre is not a valid ancestor of Commit After Reformat $post in this repo"
   fi
@@ -350,18 +349,18 @@ reformat_branch() {
   fi
 
   # Validate the user has no pending changes
-  git diff --quiet > /dev/null 2>&1
-  if [ $? = 1 ] ; then
+  if ! git diff --quiet
+  then
     abort "ERROR: Your working tree has pending changes. You must have a clean working tree before proceeding."
   fi
 
-  val=$(git merge-base HEAD $pre) > /dev/null 2>&1
-  if [ "$val" != *"$pre"* ] ; then
+  val=$(git merge-base HEAD "$pre") > /dev/null 2>&1
+  if [ "$val" != "$pre" ] ; then
     abort "ERROR: Please rebase to $pre and resolve all conflicts before running this script"
   fi
 
-  val=$(git merge-base HEAD $master) > /dev/null 2>&1
-  if [ "$val" != *"$pre"* ] ; then
+  val=$(git merge-base HEAD "$master") > /dev/null 2>&1
+  if [ "$val" != "$pre" ] ; then
     abort "ERROR: This branch appears to already have advanced too far through the merge process"
   fi
 
@@ -372,23 +371,21 @@ reformat_branch() {
   fi
   new_branch="$val-reformatted"
 
-  git rev-parse --verify $new_branch > /dev/null 2>&1
-  if [ $? = 0 ] ; then
+  if git rev-parse --verify "$new_branch" > /dev/null 2>&1
+  then
     abort "The branch $new_branch already exists. Please delete or rename the current branch."
   fi
 
-  commits=$(git log --reverse --pretty=format:%H $pre..HEAD) > /dev/null 2>&1
+  commits=$(git log --reverse --pretty=format:%H "$pre"..HEAD) > /dev/null 2>&1
 
   previous_commit_base=$post
-
-  files_match=$(find . -type f -iname '*.[ch]' -o -iname '*.cpp' | egrep -wv "$IGNORE_PATHS")
 
   # # Go through all the commits the user made on the local branch and migrate to a new branch
   # # that is based on post_reformat commits instead
   for c in $commits
   do
     echo "${c}:"
-    git checkout --quiet $c > /dev/null 2>&1
+    git checkout --quiet "$c" > /dev/null 2>&1
 
     deleted_files=""
     # Format each of the files by checking out just a single commit from the user's branch
@@ -402,17 +399,17 @@ reformat_branch() {
         continue
       fi
 
-      if [ $commit_file != *.[cCh] && $commit_file != *.cpp ] ; then
+      if ! is_formattable_file "$commit_file" ; then
         echo "Skipping file $commit_file since it is not a file clang_format should format"
       else
-        $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -i $commit_file
+        $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -i "$commit_file"
         echo "format $commit_file"
       fi
     done
 
     # Check if anything needed reformatting, and if so amend the commit
-    git diff --quiet > /dev/null 2>&1
-    if [ $? = 0 ] ; then
+    if git diff --quiet > /dev/null 2>&1
+    then
       echo "Commit $c needed no reformatting"
     else
       git commit --all --amend --no-edit > /dev/null 2>&1
@@ -423,39 +420,37 @@ reformat_branch() {
 
     # Checkout the new branch with the reformatted commits
     # Note: we will not name as a branch until we are done with all commits on the local branch
-    git checkout --quiet $previous_commit_base > /dev/null 2>&1
+    git checkout --quiet "$previous_commit_base" > /dev/null 2>&1
 
     # Copy each file from the reformatted commit on top of the post reformat
-    diff_files=$(git diff --name-only $prev_commit~..$prev_commit)
-    for diff_file in $diff_files
+    for diff_file in $(git diff --name-only "$prev_commit"~.."$prev_commit")
     do
       # If the file was deleted in the commit we are reformatting, we need to delete it again
-      if [ "$deleted_files" = *"$diff_file"* ] ; then
-        git rm $diff_file > /dev/null 2>&1
+      case "$deleted_files" in
+      *"$diff_file"*)::
+        git rm "$diff_file" > /dev/null 2>&1
         continue
-      fi
+        ;;
+      esac
 
       # The file has been added or modified, continue as normal
-      file_contents=$(git show $prev_commit:$diff_file) > /dev/null 2>&1
-
       root_dir=$(dirname "$diff_file")
       if [ ! -e "$root_dir" ] ; then
-        mkdir -p $root_dir
+        mkdir -p "$root_dir"
       fi
+      git show "$prev_commit":"$diff_file" > "$diff_file"
 
-      echo "$file_contents" > $diff_file
-
-      git add $diff_file > /dev/null 2>&1
+      git add "$diff_file" > /dev/null 2>&1
     done
 
     # Create a new commit onto clang-formatted branch
-    git commit --reuse-message=$prev_commit > /dev/null 2>&1
+    git commit --reuse-message="$prev_commit" > /dev/null 2>&1
 
     previous_commit_base=$(git rev-parse HEAD)
   done
 
   # Create a new branch to mark the hashes we have been using
-  git checkout -b $new_branch > /dev/null 2>&1
+  git checkout -b "$new_branch" > /dev/null 2>&1
 
   cat <<_EOF_
 -----------------------------------------
@@ -543,18 +538,18 @@ format_files() {
         echo "Skipping $f (filename doesn't look like c/c++/objc)"
         continue
     fi
-    outf=$f
+    outf="$f"
     if [ "$OUTPUT_PATH" = "" ] ; then
-      cat $outf | preprocess_stdin > spruce-tmp.tmp && mv spruce-tmp.tmp $outf
-      $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -i $f
+      preprocess_stdin < "$outf" > spruce-tmp.tmp && mv spruce-tmp.tmp "$outf"
+      $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -i "$f"
     else
       dname=$(dirname "$f")
       mkdir -p "$OUTPUT_PATH/$dname"
       outf="$OUTPUT_PATH/$f"
-      cat $f | preprocess_stdin > spruce-tmp.tmp && mv spruce-tmp.tmp $outf
-      $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -i $outf
+      preprocess_stdin < "$f" > spruce-tmp.tmp && mv spruce-tmp.tmp "$outf"
+      $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -i "$outf"
     fi
-    cat $outf | postprocess_stdin > spruce-tmp.tmp && mv spruce-tmp.tmp $outf
+    postprocess_stdin < "$outf" > spruce-tmp.tmp && mv spruce-tmp.tmp "$outf"
   done
 }
 
@@ -564,15 +559,15 @@ format_changes() {
 #  $GIT_CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -f --extensions c,cpp,h
   for outf in $(git status | awk '/modified:/ {print $2}' | egrep -wv "$IGNORE_PATHS" )
   do
-    echo $outf
+    echo "$outf"
     if ! is_formattable_file "$outf"
     then
         echo "Skipping $outf (filename doesn't look like c/c++/objc)"
         continue
     fi
-    cat $outf | preprocess_stdin > spruce-tmp.tmp && mv spruce-tmp.tmp $outf
-    $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -i $outf
-    cat $outf | postprocess_stdin > spruce-tmp.tmp && mv spruce-tmp.tmp $outf
+    preprocess_stdin < "$outf" > spruce-tmp.tmp && mv spruce-tmp.tmp "$outf"
+    $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -i "$outf"
+    postprocess_stdin < "$outf" > spruce-tmp.tmp && mv spruce-tmp.tmp "$outf"
   done
 }
 
@@ -703,35 +698,34 @@ _EOF_
       IN_ERR=true
       print_help_menu
     fi
-    deploy_plugin $2
+    deploy_plugin "$2"
     ;;
   all)
     # format all .C/.c/.h/.cpp files that are not in the IGNORE_PATHS
-    files=$(find . -type f -iname '*.[ch]' -o -iname '*.cpp' | egrep -wv "$IGNORE_PATHS")
-    format_files ${files}
+    # shellcheck disable=SC2046
+    format_files $(find . -type f -iname '*.[ch]' -o -iname '*.cpp' | egrep -wv "$IGNORE_PATHS")
     ;;
   changes)
     format_changes
     ;;
   precommit)
     # Check all staged .C/.c/.h/.cpp files that are not in the IGNORE_PATHS
-    if files=$(git diff --name-only HEAD --diff-filter=AM | egrep -i '\.[ch]$|\.cpp$' | egrep -wv "$IGNORE_PATHS")
-    then
-      check_files $files
-    fi
+    # shellcheck disable=SC2046
+    check_files $(git diff --name-only HEAD --diff-filter=AM | egrep -i '\.[ch]$|\.cpp$' | egrep -wv "$IGNORE_PATHS")
     ;;
   check)
     shift
     # Check given .C/.c/.h/.cpp files (default: all that are not in the IGNORE_PATHS)
     if test "$*" = ""
     then
-        files=$(find . -type f -iname '*.[ch]' -o -iname '*.cpp' | sed 's,^\./,,' | egrep -wv "$IGNORE_PATHS")
+        # shellcheck disable=SC2046
+        check_files $(find . -type f -iname '*.[ch]' -o -iname '*.cpp' | sed 's,^\./,,' | egrep -wv "$IGNORE_PATHS")
     else
-        files="$*"
+        check_files "$@"
     fi
-    check_files $files
     ;;
   freebase)
+    shift
     # Fix a branch whose upstream has since been reformatted
     if [ $# -ne 3 ] ; then
       cat <<_EOF_
@@ -742,16 +736,17 @@ _EOF_
       IN_ERR=true
       print_help_menu
     fi
-    reformat_branch $1 $2 $3
+    reformat_branch "$1" "$2" "$3"
     ;;
   *)
-    if ! test -f $1
+    if ! test -f "$1"
     then
         echo "ERROR: $1 is not a file or command?"
         echo ""
         print_help_menu
         exit 1
     fi
+    # shellcheck disable=SC2046,SC2012
     format_files $(ls -d "$@" | egrep -wv "$IGNORE_PATHS")
     ;;
 esac
