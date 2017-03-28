@@ -10,6 +10,11 @@ POSIXLY_CORRECT=1
 # Running operating system
 OS=$(uname -s)
 
+abort() {
+  echo "error: $*"
+  exit 1
+}
+
 print_help_menu() {
   cat <<_EOF_
 Spruce: Don't Let Messes Overstay Their Welcome
@@ -197,7 +202,7 @@ update_brew() {
   b=$(which brew)
   if [ "$b" = "" ] ; then
     msg="ERROR: brew: command not found. Shall I install it for you (y/n)?"
-    printf  "$msg "
+    printf %s "$msg "
     read ans
     INVALID=true
     while $INVALID ; do
@@ -206,28 +211,26 @@ update_brew() {
           INVALID=false
           ;;
         n|N|no)
-          printf "\nFailed to run clang-format\n"
-          exit 1
+          abort "Failed to run clang-format"
           ;;
         * )
-          printf  "Invalid Answer. Please answer [y/n]: "
+          echo  "Invalid Answer. Please answer [y/n]: "
           read ans
           ;;
       esac
     done
 
-    printf "\nInstalling brew...\n"
+    echo "Installing brew..."
     brew_url="https://raw.githubusercontent.com/Homebrew/install/master/install"
     /usr/bin/ruby -e "$(curl -fsSL $brew_url)"
 
     b=$(which brew)
     if [ "$b" = " " ] ; then
-      printf "\nFailed to install brew\n"
-      exit 1
+      abort "Failed to install brew"
     fi
   fi
 
-  printf "\nUpdating brew..."
+  echo "Updating brew..."
   brew update
 }
 
@@ -242,7 +245,7 @@ unlink_clang_format() {
 }
 
 install_clang_format() {
-  printf "\ninstalling clang-format...\n"
+  echo "installing clang-format..."
   if [ "$OS" = "Darwin" ] ; then
     brew tap Homebrew/homebrew-versions
     brew install $CLANG_FORMAT_PKGNAME
@@ -261,14 +264,14 @@ test_clang_format_version() {
   if [ "$clang_v" = "" ] ; then
     msg="ERROR: clang-format: command not found. Shall I install it for you (y/n)?"
   else
-    printf "ERROR: clang-format: wrong version ($clang_v)\n"
+    echo "ERROR: clang-format: wrong version ($clang_v)"
     msg="Shall I install $CLANG_FORMAT_SHORT_VERSION for you (y/n)?"
     if [ "$OS" = "Darwin" ] ; then
       msg="$msg (WARNING: Answering yes will unlink your current version)"
     fi
   fi
 
-  printf  "$msg "
+  printf %s "$msg "
   read ans
   INVALID=true
   while $INVALID ; do
@@ -277,11 +280,10 @@ test_clang_format_version() {
         INVALID=false
         ;;
       n|N|no)
-        printf "\nFailed to run clang-format\n"
-        exit 1
+        abort "Failed to run clang-format"
         ;;
       * )
-        printf  "Invalid Answer. Please answer [y/n]: "
+        printf %s "Invalid Answer. Please answer [y/n]: "
         read ans
         ;;
     esac
@@ -304,8 +306,7 @@ test_clang_format_version() {
     echo "Using Clang Version: $clang_v"
     ;;
   *)
-    echo "Wanted clang-format version $CLANG_FORMAT_VERSION_DESC, got $clang_v.  Aborting."
-    exit 1
+    abort "Wanted clang-format version $CLANG_FORMAT_VERSION_DESC, got $clang_v.  Aborting."
     ;;
   esac
 }
@@ -313,7 +314,7 @@ test_clang_format_version() {
 # Logic borrowed from mongodb:
 # https://github.com/mongodb/mongo/blob/master/buildscripts/clang_format.py#L727
 reformat_branch() {
-  printf "\n\nreformat a branch made before a clang-format run..."
+  echo "reformat a branch made before a clang-format run..."
 
   pre=$1
   post=$2
@@ -321,8 +322,7 @@ reformat_branch() {
 
   val="$(git rev-parse --show-toplevel)"
   if [ "$(pwd)" != "$val" ] ; then
-    printf "\nERROR: Branch reformatting must be done from the repo root:\n  $val\n"
-    exit 1
+    abort "ERROR: Branch reformatting must be done from the repo root: $val"
   fi
 
   # if not os.path.exists("buildscripts/clang_format.py"):
@@ -331,60 +331,50 @@ reformat_branch() {
   # # Validate that user passes valid commits
   git cat-file -e $pre > /dev/null 2>&1
   if [ $? != 0 ] ; then
-    printf "\nERROR: Commit prior to reformat $pre is not a valid commit in this repo\n"
-    exit 1
+    abort "ERROR: Commit prior to reformat $pre is not a valid commit in this repo"
   fi
   git cat-file -e $post > /dev/null 2>&1
   if [ $? != 0 ] ; then
-    printf "\nERROR: Commit after reformat $post is not a valid commit in this repo\n"
-    exit 1
+    abort "ERROR: Commit after reformat $post is not a valid commit in this repo\n"
   fi
 
   git merge-base --is-ancestor $pre $post > /dev/null 2>&1
   if [ $? != 0 ] ; then
-    printf "\nERROR: Commit Prior to Reformat $pre is not a valid ancestor of Commit After"
-    printf "\n       Reformat $post in this repo\n"
-    exit 1
+    abort "ERROR: Commit Prior to Reformat $pre is not a valid ancestor of Commit After Reformat $post in this repo"
   fi
 
   # Validate the user is on a local branch that has the right merge base
   git symbolic-ref --quiet HEAD > /dev/null 2>&1
   if [ $? = 1 ] ; then
-    printf "\nERROR: You must not run this script in a detached HEAD state\n"
-    exit 1
+    abort "ERROR: You must not run this script in a detached HEAD state"
   fi
 
   # Validate the user has no pending changes
   git diff --quiet > /dev/null 2>&1
   if [ $? = 1 ] ; then
-    printf "\nERROR: Your working tree has pending changes. You must have a clean working tree before proceeding.\n"
-    exit 1
+    abort "ERROR: Your working tree has pending changes. You must have a clean working tree before proceeding."
   fi
 
   val=$(git merge-base HEAD $pre) > /dev/null 2>&1
   if [ "$val" != *"$pre"* ] ; then
-    printf "\nERROR: Please rebase to $pre and resolve all conflicts before running this script\n"
-    exit 1
+    abort "ERROR: Please rebase to $pre and resolve all conflicts before running this script"
   fi
 
   val=$(git merge-base HEAD $master) > /dev/null 2>&1
   if [ "$val" != *"$pre"* ] ; then
-    printf "\nERROR: This branch appears to already have advanced too far through the merge process\n"
-    exit 1
+    abort "ERROR: This branch appears to already have advanced too far through the merge process"
   fi
 
   # Everything looks good so lets start going through all the commits
   val=$(git rev-parse --abbrev-ref HEAD) > /dev/null 2>&1
   if [ "$val" = "HEAD" ] ; then
-    printf "\nBranch is currently detached\n"
-    exit 1
+    abort "Branch is currently detached"
   fi
   new_branch="$val-reformatted"
 
   git rev-parse --verify $new_branch > /dev/null 2>&1
   if [ $? = 0 ] ; then
-    printf "\nThe branch $new_branch already exists. Please delete or rename the current branch."
-    exit 1
+    abort "The branch $new_branch already exists. Please delete or rename the current branch."
   fi
 
   commits=$(git log --reverse --pretty=format:%H $pre..HEAD) > /dev/null 2>&1
@@ -397,7 +387,7 @@ reformat_branch() {
   # # that is based on post_reformat commits instead
   for c in $commits
   do
-    printf "\n$c:"
+    echo "${c}:"
     git checkout --quiet $c > /dev/null 2>&1
 
     deleted_files=""
@@ -407,23 +397,23 @@ reformat_branch() {
     do
       # Format each file needed if it was not deleted
       if [ ! -e "$commit_file" ] ; then
-        printf "\n  Skipping file $commit_file since it has been deleted in commit '$c'"
+        echo "Skipping file $commit_file since it has been deleted in commit '$c'"
         deleted_files="${deleted_files}$commit_file:"
         continue
       fi
 
       if [ $commit_file != *.[cCh] && $commit_file != *.cpp ] ; then
-        printf "\n  Skipping file $commit_file since it is not a file clang_format should format"
+        echo "Skipping file $commit_file since it is not a file clang_format should format"
       else
         $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -i $commit_file
-        printf "\n  format $commit_file"
+        echo "format $commit_file"
       fi
     done
 
     # Check if anything needed reformatting, and if so amend the commit
     git diff --quiet > /dev/null 2>&1
     if [ $? = 0 ] ; then
-      printf "\n  Commit $c needed no reformatting"
+      echo "Commit $c needed no reformatting"
     else
       git commit --all --amend --no-edit > /dev/null 2>&1
     fi
@@ -467,11 +457,14 @@ reformat_branch() {
   # Create a new branch to mark the hashes we have been using
   git checkout -b $new_branch > /dev/null 2>&1
 
-  printf "\n\nNOTICE:\n-----------------------------------------"
-  printf "\nreformat-branch is done running."
-  printf "\nA copy of your branch has been made named $new_branch, and formatted with clang-format."
-  printf "\nThe original branch has been left unchanged."
-  printf "\nThe next step is to rebase the new branch on 'iz'.\n\n"
+  cat <<_EOF_
+-----------------------------------------
+NOTICE:
+reformat-branch is done running.
+A copy of your branch has been made named $new_branch, and formatted with clang-format.
+The original branch has been left unchanged.
+The next step is to rebase the new branch on 'iz'.
+_EOF_
 }
 
 test_clang_format_version
@@ -625,10 +618,10 @@ reformat_sublime() {
 deploy_plugin() {
   case "$1" in
     emacs)
-      echo "ERROR: emacs not yet supported"
+      abort "ERROR: emacs not yet supported"
       ;;
     vim)
-      echo "ERROR: vim not yet supported"
+      abort "ERROR: vim not yet supported"
       ;;
     sublime)
       cat_style_file | reformat_sublime > clang_format_custom.sublime-settings
