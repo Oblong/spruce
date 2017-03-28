@@ -42,9 +42,19 @@ trap cleanup 0
 ./spruce -o tmp spruce_test_pre.cpp
 if diff -u spruce_test_post.cpp tmp/spruce_test_pre.cpp
 then
-  pass "Success!"
+  pass "test1: Success!"
 else
-  fail "Woopsie Daisy! Something done got regressed"
+  fail "test1: Woopsie Daisy! Something done got regressed"
+fi
+
+# use as filter
+rm -rf tmp
+./spruce - < spruce_test_pre.cpp > tmp
+if diff -u spruce_test_post.cpp tmp
+then
+  pass "test2: Success!"
+else
+  fail "test2: Woopsie Daisy! Something done got regressed"
 fi
 
 ## Test freebase

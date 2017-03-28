@@ -23,6 +23,7 @@ See https://gitlab.oblong.com/platform/docs/wikis/coding-style/
 
 usage: spruce [-o outdir] file...         (reformat given files)
 or:    spruce [-o outdir] all             (reformat all files)
+or:    spruce -                           (reformat stdin to stdout)
 or:    spruce changes                     (reformat all edits, staged and unstaged)
 or:    spruce check [files...]            (list files that need reformatting)
 or:    spruce precommit                   (abort if a staged file needs reformatting)
@@ -191,6 +192,7 @@ case "$1" in
     OUTPUT_PATH=$1
     shift
     ;;
+-) ;;
 -*)
     echo "Invalid option: $1" >&2
     IN_ERR=true
@@ -737,6 +739,10 @@ _EOF_
       print_help_menu
     fi
     reformat_branch "$1" "$2" "$3"
+    ;;
+  -)
+    # If 1st arg is -, format stdin and send result to stdout.
+    preprocess_stdin | $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" | postprocess_stdin
     ;;
   *)
     if ! test -f "$1"
