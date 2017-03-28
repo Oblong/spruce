@@ -1,6 +1,7 @@
 #!/bin/sh
 # Test suite!
 set -ex
+ORIGDIR=$(pwd)
 
 # Trivial test framework
 terminate_fail()
@@ -32,6 +33,7 @@ xfail() {
 # End trivial test framework
 
 cleanup() {
+  cd "${ORIGDIR}"
   rm -rf tmp bletch.tmp
 }
 trap cleanup 0
@@ -46,6 +48,7 @@ else
 fi
 
 ## Test freebase
+(
 # 1. Create a git repo wif summat in't
 rm -rf bletch.tmp
 mkdir bletch.tmp
@@ -69,5 +72,6 @@ after=$(git log -n 1 --format=%H)
 git checkout branch2
 sh -x ../spruce freebase "$before" "$after" master
 # 5. ideally we'd check something here, but I'm just happy it didn't crash :-)
+)
 
 terminate_success

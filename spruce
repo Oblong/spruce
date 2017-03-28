@@ -203,7 +203,7 @@ update_brew() {
   if [ "$b" = "" ] ; then
     msg="ERROR: brew: command not found. Shall I install it for you (y/n)?"
     printf %s "$msg "
-    read ans
+    read -r ans
     INVALID=true
     while $INVALID ; do
       case "$ans" in
@@ -215,7 +215,7 @@ update_brew() {
           ;;
         * )
           echo  "Invalid Answer. Please answer [y/n]: "
-          read ans
+          read -r ans
           ;;
       esac
     done
@@ -271,7 +271,7 @@ test_clang_format_version() {
   fi
 
   printf %s "$msg "
-  read ans
+  read -r ans
   INVALID=true
   while $INVALID ; do
     case "$ans" in
@@ -283,7 +283,7 @@ test_clang_format_version() {
         ;;
       * )
         printf %s "Invalid Answer. Please answer [y/n]: "
-        read ans
+        read -r ans
         ;;
     esac
   done
@@ -328,23 +328,23 @@ reformat_branch() {
   #     raise ValueError("reformat-branch is only supported in the mongo repo")
 
   # Validate that user passes valid commits
-  git cat-file -e "$pre" > /dev/null 2>&1
-  if [ $? != 0 ] ; then
+  if ! git cat-file -e "$pre" > /dev/null 2>&1
+  then
     abort "ERROR: Commit prior to reformat $pre is not a valid commit in this repo"
   fi
-  git cat-file -e "$post" > /dev/null 2>&1
-  if [ $? != 0 ] ; then
+  if ! git cat-file -e "$post" > /dev/null 2>&1
+  then
     abort "ERROR: Commit after reformat $post is not a valid commit in this repo\n"
   fi
 
-  git merge-base --is-ancestor "$pre" "$post" > /dev/null 2>&1
-  if [ $? != 0 ] ; then
+  if ! git merge-base --is-ancestor "$pre" "$post" > /dev/null 2>&1
+  then
     abort "ERROR: Commit Prior to Reformat $pre is not a valid ancestor of Commit After Reformat $post in this repo"
   fi
 
   # Validate the user is on a local branch that has the right merge base
-  git symbolic-ref --quiet HEAD > /dev/null 2>&1
-  if [ $? = 1 ] ; then
+  if ! git symbolic-ref --quiet HEAD > /dev/null 2>&1
+  then
     abort "ERROR: You must not run this script in a detached HEAD state"
   fi
 
@@ -557,7 +557,7 @@ format_files() {
 # FIXME: stop using git-clang-format so we can skip files in IGNORE_PATHS
 format_changes() {
 #  $GIT_CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -f --extensions c,cpp,h
-  for outf in $(git status | awk '/modified:/ {print $2}' | egrep -wv "$IGNORE_PATHS" )
+  for outf in $(git status | awk '/modified:/ {print $2}' | grep -E -wv "$IGNORE_PATHS" )
   do
     echo "$outf"
     if ! is_formattable_file "$outf"
@@ -666,18 +666,18 @@ check_files() {
         echo "Skipping $f (filename doesn't look like c/c++/objc)"
         continue
     fi
-    if $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -output-replacements-xml < $f |
+    if $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -output-replacements-xml < "$f" |
       grep "<replacement " > /dev/null
     then
-      if ! $failed
+      if ! "$failed"
       then
         failed=true
         print_error_header
       fi
-      echo $f
+      echo "$f"
     fi
   done
-  if $failed
+  if "$failed"
   then
     exit 1
   fi
@@ -703,7 +703,7 @@ _EOF_
   all)
     # format all .C/.c/.h/.cpp files that are not in the IGNORE_PATHS
     # shellcheck disable=SC2046
-    format_files $(find . -type f -iname '*.[ch]' -o -iname '*.cpp' | egrep -wv "$IGNORE_PATHS")
+    format_files $(find . -type f -iname '*.[ch]' -o -iname '*.cpp' | grep -E -wv "$IGNORE_PATHS")
     ;;
   changes)
     format_changes
@@ -711,7 +711,7 @@ _EOF_
   precommit)
     # Check all staged .C/.c/.h/.cpp files that are not in the IGNORE_PATHS
     # shellcheck disable=SC2046
-    check_files $(git diff --name-only HEAD --diff-filter=AM | egrep -i '\.[ch]$|\.cpp$' | egrep -wv "$IGNORE_PATHS")
+    check_files $(git diff --name-only HEAD --diff-filter=AM | grep -E -i '\.[ch]$|\.cpp$' | grep -E -wv "$IGNORE_PATHS")
     ;;
   check)
     shift
@@ -719,7 +719,7 @@ _EOF_
     if test "$*" = ""
     then
         # shellcheck disable=SC2046
-        check_files $(find . -type f -iname '*.[ch]' -o -iname '*.cpp' | sed 's,^\./,,' | egrep -wv "$IGNORE_PATHS")
+        check_files $(find . -type f -iname '*.[ch]' -o -iname '*.cpp' | sed 's,^\./,,' | grep -E -wv "$IGNORE_PATHS")
     else
         check_files "$@"
     fi
@@ -746,7 +746,7 @@ _EOF_
         print_help_menu
         exit 1
     fi
-    # shellcheck disable=SC2046,SC2012
-    format_files $(ls -d "$@" | egrep -wv "$IGNORE_PATHS")
+    # shellcheck disable=SC2046,SC2012,SC2010
+    format_files $(ls -d "$@" | grep -E -wv "$IGNORE_PATHS")
     ;;
 esac
