@@ -585,7 +585,7 @@ sublime_wants_containers_on_single_line() {
           }'
 }
 
-reformat_sublime() {
+generate_sublime() {
   echo "{"
 
   # in the order of the lines below:
@@ -612,16 +612,34 @@ reformat_sublime() {
   echo "}"
 }
 
+generate_emacs() {
+  cat > "spruce.el" <<_EOF_
+(defun spruce-current-file ()
+  "spruce the current file and revert the buffer"
+  (interactive)
+  (let ((spruce (locate-file "spruce" exec-path)))
+    (if (not spruce)
+        (error "Spruce not found, can't spruce"))
+    (let* ((spruce-command (concat spruce " "
+                                   (shell-quote-argument (buffer-file-name))))
+           (buff (current-buffer))
+           (buff-cmp (lambda () (if (eq (current-buffer) buff) t nil))))
+      (save-some-buffers nil 'buff-cmp)
+      (shell-command spruce-command))
+    (revert-buffer t t t)))
+_EOF_
+}
+
 deploy_plugin() {
   case "$1" in
     emacs)
-      abort "ERROR: emacs not yet supported"
+      generate_emacs
       ;;
     vim)
       abort "ERROR: vim not yet supported"
       ;;
     sublime)
-      cat_style_file | reformat_sublime > clang_format_custom.sublime-settings
+      cat_style_file | generate_sublime > clang_format_custom.sublime-settings
       ;;
     *)
       cat <<_EOF_
