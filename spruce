@@ -610,7 +610,23 @@ generate_sublime() {
 }
 
 generate_emacs() {
-  cat > "spruce.el" <<_EOF_
+  cat > "spruce-emacs.el" <<_EOF_
+;; This file is a minimal spruce emacs-integration. To install:
+;; - Make sure spruce is installed and on your path.
+;; - Add to your .emacs:
+;;
+;;   (load "<path-to-this-file>/spruce-emacs.el")
+;;   (global-set-key (kbd "C-M-<tab>") 'spruce-current-file)
+;;
+;; The second line sets the key binding for running the sprucification. Change
+;; "C-M-<tab>" to another binding if you need spruce on a different key
+;; (C-M-<tab> stands for Ctrl+Meta+Tab).
+;;
+;; With this integration you can press the bound key and spruce will save your
+;; current buffer and then run spruce against it.
+;;
+;; To revert a formatting, just undo.
+
 (defun spruce-current-file ()
   "spruce the current file and revert the buffer"
   (interactive)
@@ -627,13 +643,72 @@ generate_emacs() {
 _EOF_
 }
 
+generate_vim() {
+  cat > "spruce-vim.py" <<_EOF_
+# This file is a minimal spruce vim-integration. To install:
+# - Change 'binary' if spruce is not on the path (see below).
+# - Add to your .vimrc:
+#
+#   map <C-I> :pyf <path-to-this-file>/spruce-vim.py<cr>
+#   imap <C-I> <c-o>:pyf <path-to-this-file>/spruce-vim.py<cr>
+#
+# The first line enables clang-format for NORMAL and VISUAL mode, the second
+# line adds support for INSERT mode. Change "C-I" to another binding if you
+# need spruce on a different key (C-I stands for Ctrl+i).
+#
+# With this integration you can press the bound key and spruce will save your
+# current buffer and then run spruce against it.
+#
+# To revert a formatting, just undo.
+
+import subprocess
+import vim
+
+# set g:spruce to the path to spruce if it is not on the path
+# Change this to the full path if spruce is not on the path.
+binary = 'spruce'
+if vim.eval('exists("g:spruce_path")') == "1":
+  binary = vim.eval('g:spruce_path')
+
+def main():
+  # Get the current file path.
+  file = vim.eval('expand("%:p")')
+
+  # Save the current buffer before running
+  vim.command('write')
+
+  # Avoid flashing an ugly, ugly cmd prompt on Windows when invoking spruce.
+  startupinfo = None
+  if sys.platform.startswith('win32'):
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    startupinfo.wShowWindow = subprocess.SW_HIDE
+
+  # Call spruce.
+  command = [binary, file]
+  p = subprocess.Popen(command,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                       stdin=subprocess.PIPE, startupinfo=startupinfo)
+  stdout, stderr = p.communicate()
+
+  # If successful, replace buffer contents.
+  if stderr:
+    print stderr
+
+  # reload buffer
+  vim.command('edit')
+
+main()
+_EOF_
+}
+
 deploy_plugin() {
   case "$1" in
     emacs)
       generate_emacs
       ;;
     vim)
-      abort "ERROR: vim not yet supported"
+      generate_vim
       ;;
     sublime)
       cat_style_file | generate_sublime > clang_format_custom.sublime-settings
