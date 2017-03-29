@@ -540,18 +540,15 @@ format_files() {
         echo "Skipping $f (filename doesn't look like c/c++/objc)"
         continue
     fi
+    preprocess_stdin < "$f" \
+    | $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" \
+    | postprocess_stdin > spruce-tmp.tmp
     outf="$f"
-    if [ "$OUTPUT_PATH" = "" ] ; then
-      preprocess_stdin < "$outf" > spruce-tmp.tmp && mv spruce-tmp.tmp "$outf"
-      $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -i "$f"
-    else
-      dname=$(dirname "$f")
-      mkdir -p "$OUTPUT_PATH/$dname"
+    if [ "$OUTPUT_PATH" != "" ] ; then
       outf="$OUTPUT_PATH/$f"
-      preprocess_stdin < "$f" > spruce-tmp.tmp && mv spruce-tmp.tmp "$outf"
-      $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -i "$outf"
+      mkdir -p "$(dirname "$outf")"
     fi
-    postprocess_stdin < "$outf" > spruce-tmp.tmp && mv spruce-tmp.tmp "$outf"
+    mv spruce-tmp.tmp "$outf"
   done
 }
 
