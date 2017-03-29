@@ -706,12 +706,40 @@ deploy_plugin() {
   case "$1" in
     emacs)
       generate_emacs
+      cat <<_EOF_
+spruce-emacs.el has been created in the current working directory
+
+To use:
+  1. Copy the file to its final resting place (your choice)
+  2. Follow the instructions in the comments at the top of the file
+
+_EOF_
       ;;
     vim)
       generate_vim
+      cat <<_EOF_
+spruce-vim.py has been created in the current working directory
+
+To use:
+  1. Copy the file to its final resting place (your choice)
+  2. Follow the instructions in the comments at the top of the file
+
+_EOF_
       ;;
     sublime)
       cat_style_file | generate_sublime > clang_format_custom.sublime-settings
+      cat <<_EOF_
+clang_format_custom.sublime-settings has been created in the current working directory
+
+To use:
+  1. Copy the file to:
+     Mac OS X: '~/Library/Application\ Support/Sublime Text 3/Packages/SublimeClangFormat'
+     Linux: '~/.config/sublime-text-3/Packages/SublimeClangFormat'
+  2. In Sublime:
+     1. Tools -> Command Palette -> Select "Clang-Format: Select Style" -> Select "Custom"
+     2. Highlight code and type super+option+a on OSX and ctrl+option+a otherwise
+  See https://github.com/rosshemsley/SublimeClangFormat for more
+_EOF_
       ;;
     *)
       cat <<_EOF_
