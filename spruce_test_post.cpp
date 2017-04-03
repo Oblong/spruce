@@ -13,8 +13,6 @@ class Spruce : public Truce
   struct struce
   {
    OB_PROTECTED:
-
-
     int32 b1;
     int32 b2;
 
@@ -22,6 +20,7 @@ class Spruce : public Truce
     {
      OB_PRIVATE:
       float32 pub;
+
      OB_PUBLIC:
       /** accessor
        */
@@ -48,7 +47,8 @@ class Spruce : public Truce
     Bruce () { b1 = b2 = 0; }
   };
 
- OB_PRIVATE:
+  // OB_PUBLIC:
+ OB_PRIVATE:  // privateness
   /**
    * this is var5. it holds data.
    */
@@ -56,7 +56,8 @@ class Spruce : public Truce
   float64 var6;
   Bruce *bruce;
 
- public:
+  // OB_PRIVATE:
+ public:  // publicness
   //
   // constructor
   //
@@ -81,7 +82,6 @@ class Spruce : public Truce
   void OnGuard ();
 
  OB_PRIVATE:
-
   void TheBathroomDoorReadsOccupied ();
   void DontOpenIt ();
 };

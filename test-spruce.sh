@@ -47,14 +47,23 @@ else
   fail "test1: Woopsie Daisy! Something done got regressed"
 fi
 
+# Test no change on second run
+./spruce tmp/spruce_test_pre.cpp
+if diff -u spruce_test_post.cpp tmp/spruce_test_pre.cpp
+then
+  pass "test2: Success!"
+else
+  fail "test2: Woopsie Daisy! Second run not equal to first"
+fi
+
 # use as filter
 rm -rf tmp
 ./spruce - < spruce_test_pre.cpp > tmp
 if diff -u spruce_test_post.cpp tmp
 then
-  pass "test2: Success!"
+  pass "test3: Success!"
 else
-  fail "test2: Woopsie Daisy! Something done got regressed"
+  fail "test3: Woopsie Daisy! Something done got regressed"
 fi
 
 ## Test freebase

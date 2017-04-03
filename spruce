@@ -467,49 +467,22 @@ _EOF_
 test_clang_format_version
 
 preprocess_stdin() {
-  # Work around https://llvm.org/bugs/show_bug.cgi?id=30849
-  # This cleans up the case where there's an OB_P* followed by
-  # new lines or comments, which clang-format has no idea what to
-  # do with. So we insert a unique spruce varaible before the
-  # new line or comment for the post-processing to remove later.
-  # This seems like a better option than practically writing our
-  # own c++ compiler to figure out when clang-format screwed up.
-  perl -e 'while (<STDIN>) {
-            if ($prefice && ((/^$/) || (/( *)\/[\/\*]/))) {
-              print "int32 SPRUCE_IT\;$_";
-              next;
-            };
-            if ($prefice) { $prefice=0; };
-            if (/OB_P(RIVATE|ROTECTED|UBLIC):/) { $prefice=1; };
-            print;
-          }'
+  # Work around https://llvm.org/bugs/show_bug.cgi?id=30849, part 1
+  # Convert our wrappers back into something recognizable
+  perl -p \
+    -e 's,OB_PRIVATE:,private:/*SPRUCE*/,;' \
+    -e 's,OB_PROTECTED:,protected:/*SPRUCE*/,;' \
+    -e 's,OB_PUBLIC:,public:/*SPRUCE*/,;' \
   #
 }
 
 postprocess_stdin() {
-  # Work around https://llvm.org/bugs/show_bug.cgi?id=30849
-  # and guard inserting multiple newlines afer muliple runs
-  # Use perl instead of sed because it supports multiline search
-  # and is present by default on linux and mac.
-  # This does the following:
-  #   1-3: for OB_P* with trailing information, delete the space
-  #        before the colon, remove one space before the OB_P*, and
-  #        put the trailing information on the next line, indented
-  #        accordingly
-  #   4-6: Same as 1-3 but for the case where there isn't anything
-  #        trailing on the line.
-  #   5-6: Find lines containing our pre-processed spruce string
-  #        and delete the string, leaving just a new line or comment
-  perl -0777 -p \
-    -e 's/( *)(  OB_PRIVATE :)(.+\n)/$1 OB_PRIVATE:\n$1 $3/g;' \
-    -e 's/( *)(  OB_PROTECTED :)(.+\n)/$1 OB_PROTECTED:\n$1 $3/g;' \
-    -e 's/( *)(  OB_PUBLIC :)(.+\n)/$1 OB_PUBLIC:\n$1 $3/g;' \
-    -e 's/( *)(  OB_PRIVATE :\n)/$1 OB_PRIVATE:\n/g;' \
-    -e 's/( *)(  OB_PROTECTED :\n)/$1 OB_PROTECTED:\n/g;' \
-    -e 's/( *)(  OB_PUBLIC :\n)/$1 OB_PUBLIC:\n/g;' \
-  | perl -p \
-    -e 's/( *)(int32 SPRUCE_IT\;\n)/\n/g;' \
-    -e 's/( *)(int32 SPRUCE_IT\;)( *)(.+)/$1$4/g;' \
+  # Work around https://llvm.org/bugs/show_bug.cgi?id=30849, part 2
+  # Bring back our wrappers
+  perl -p \
+    -e 's,private: */\*SPRUCE\*/,OB_PRIVATE:,;' \
+    -e 's,protected: */\*SPRUCE\*/,OB_PROTECTED:,;' \
+    -e 's,public: */\*SPRUCE\*/,OB_PUBLIC:,;' \
   #
 }
 

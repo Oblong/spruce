@@ -44,7 +44,8 @@ OB_PROTECTED:
     Bruce () { b1 = b2 = 0; }
   };
 
-OB_PRIVATE:
+  // OB_PUBLIC:
+OB_PRIVATE: // privateness
   /**
    * this is var5. it holds data.
    */
@@ -52,7 +53,8 @@ OB_PRIVATE:
   float64 var6;
   Bruce *bruce;
 
-public:
+  // OB_PRIVATE:
+ public: // publicness
   //
   // constructor
   //
