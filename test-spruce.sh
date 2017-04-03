@@ -62,8 +62,11 @@ assert_status_nonzero() {
 # End trivial test framework
 
 cleanup() {
-  cd "${ORIGDIR}"
-  rm -rf tmp bletch.tmp
+    # paranoid lint is paranoid
+    if cd "${ORIGDIR}"
+    then
+        rm -rf tmp bletch.tmp
+    fi
 }
 
 start_test "regression-test-pass1"
@@ -87,6 +90,8 @@ start_test "precommit-should-complain"
 # 1. Create a git repo wif summat in't
 rm -rf bletch.tmp
 mkdir bletch.tmp
+# good lord paranoid lint is paranoid
+# shellcheck disable=SC2164
 cd bletch.tmp
 git init
 echo 'First commit!' > README.md
