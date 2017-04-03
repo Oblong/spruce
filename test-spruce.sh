@@ -1,34 +1,63 @@
 #!/bin/sh
 # Test suite!
-set -ex
-ORIGDIR=$(pwd)
+ORIGDIR="$(pwd)"
 
 # Trivial test framework
+start_test()
+{
+    test_name="$*"
+    echo "==== RUN: $test_name ===="
+}
+
 terminate_fail()
 {
     echo "FAILURE: SOME TESTS BEHAVED UNEXPECTEDLY"
+    #cleanup
     exit 1
 }
 terminate_success()
 {
     echo "SUCCESS: ALL TESTS BEHAVED AS EXPECTED"
+    cleanup
     exit 0
 }
 pass() {
     # expected success
-    echo "PASS: $*"
+    echo "PASS: $test_name $*"
 }
 fail() {
     # unexpected failure
-    echo "FAIL: $*"
+    echo "FAIL: $test_name $*"
     terminate_fail
 }
 xpass() {
-    echo "XPASS: unexpected success: $*"
+    echo "XPASS: unexpected success: $test_name $*"
     terminate_fail
 }
 xfail() {
-    echo "XFAIL: expected failure: $*"
+    echo "XFAIL: expected failure: $test_name $*"
+}
+
+# pass() if last command succeeded, else fail()
+# Using this means not doing 'set -e'
+assert_status_zero() {
+    if test $? = 0
+    then
+        pass "$*"
+    else
+        fail "$*"
+    fi
+}
+
+# Given name of test, fail() if last command succeeded, else pass()
+# Using this means not doing 'set -e'
+assert_status_nonzero() {
+    if test $? = 0
+    then
+        fail "$*"
+    else
+        pass "$*"
+    fi
 }
 # End trivial test framework
 
@@ -36,46 +65,41 @@ cleanup() {
   cd "${ORIGDIR}"
   rm -rf tmp bletch.tmp
 }
-trap cleanup 0
 
-# Regression test, passes with clang-format 3.8
+start_test "regression-test-pass1"
+rm -rf tmp
 ./spruce -o tmp spruce_test_pre.cpp
-if diff -u spruce_test_post.cpp tmp/spruce_test_pre.cpp
-then
-  pass "test1: Success!"
-else
-  fail "test1: Woopsie Daisy! Something done got regressed"
-fi
+diff -u spruce_test_post.cpp tmp/spruce_test_pre.cpp
+assert_status_zero ""
 
-# Test no change on second run
+start_test "regression-test-pass2"
 ./spruce tmp/spruce_test_pre.cpp
-if diff -u spruce_test_post.cpp tmp/spruce_test_pre.cpp
-then
-  pass "test2: Success!"
-else
-  fail "test2: Woopsie Daisy! Second run not equal to first"
-fi
+diff -u spruce_test_post.cpp tmp/spruce_test_pre.cpp
+assert_status_zero ""
 
-# use as filter
+start_test "regression-test-filter"
 rm -rf tmp
 ./spruce - < spruce_test_pre.cpp > tmp
-if diff -u spruce_test_post.cpp tmp
-then
-  pass "test3: Success!"
-else
-  fail "test3: Woopsie Daisy! Something done got regressed"
-fi
+diff -u spruce_test_post.cpp tmp
+assert_status_zero ""
 
-## Test freebase
-(
+start_test "precommit-should-complain"
 # 1. Create a git repo wif summat in't
 rm -rf bletch.tmp
 mkdir bletch.tmp
 cd bletch.tmp
 git init
+echo 'First commit!' > README.md
+git add README.md
+git commit -m 'First commit!'
 cp ../spruce_test_pre.cpp spruce_test.cpp
 git add spruce_test.cpp
-git commit -m 'first commit!'
+# verify that spruce scolds us for proposing to commit unstylish code
+../spruce precommit
+assert_status_nonzero ""
+
+start_test "precommit-should-not-complain"
+git commit -m 'first code commit, sinfully unstylish!'
 # 2. branch it
 git checkout -b branch2
 # 3. mutate branch 2 one way
@@ -85,12 +109,23 @@ git commit -a -m "branch 2 went spanish"
 git checkout master
 before=$(git log -n 1 --format=%H)
 ../spruce spruce_test.cpp
-git commit -a -m "master reformatted"
+git add spruce_test.cpp
+# verify that spruce recognizes we have mended our ways
+../spruce precommit
+assert_status_zero ""
+
+start_test "freebase"
+git commit -m "master reformatted, so stylish now"
 after=$(git log -n 1 --format=%H)
 # 4. now explode
 git checkout branch2
-sh -x ../spruce freebase "$before" "$after" master
+../spruce freebase "$before" "$after" master
 # 5. ideally we'd check something here, but I'm just happy it didn't crash :-)
-)
+assert_status_zero ""
+
+start_test "precommit-after-freebase"
+# Verify that all's quiet on the western front
+../spruce precommit
+assert_status_zero ""
 
 terminate_success

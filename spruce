@@ -759,8 +759,12 @@ check_files() {
         echo "Skipping $f (filename doesn't look like c/c++/objc)"
         continue
     fi
-    if $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -output-replacements-xml < "$f" |
-      grep "<replacement " > /dev/null
+    # Look for replacements with nonzero length
+    # (We could format and diff, but this is marginally faster?)
+    if preprocess_stdin < "$f" \
+       | $CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -output-replacements-xml \
+       | tee /tmp/spruce.tmp \
+       | grep "<replacement .* length='[^0].*'>" > /dev/null
     then
       if ! "$failed"
       then
