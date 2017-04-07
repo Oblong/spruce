@@ -47,9 +47,9 @@ _EOF_
 
 # Expected version of clang-format
 # note: Must match debian/control
-#CLANG_FORMAT_VERSION_DESC="(tags/google/stable/2016-12-09)"
-#CLANG_FORMAT_SHORT_VERSION="4.0.0"
-#CLANG_FORMAT_BREW_PKG="clang-format"
+# CLANG_FORMAT_VERSION_DESC="(tags/google/stable/2017-03-17)"
+# CLANG_FORMAT_SHORT_VERSION="5.0.0"
+# CLANG_FORMAT_BREW_PKG="clang-format"
 CLANG_FORMAT_VERSION_DESC="(tags/RELEASE_380/final)"
 CLANG_FORMAT_SHORT_VERSION="3.8"
 CLANG_FORMAT_BREW_PKG="clang-format38"
@@ -141,7 +141,7 @@ BraceWrapping: {AfterClass: true
   BeforeCatch: true
   BeforeElse: true
   IndentBraces: true}
-BreakBeforeBinaryOperators: All
+BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeBraces: Custom
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializersBeforeComma: false
@@ -163,6 +163,7 @@ MacroBlockBegin: ''
 MacroBlockEnd:   ''
 MaxEmptyLinesToKeep: 3
 NamespaceIndentation: None
+PenaltyBreakBeforeFirstCallParameter: 3000
 PointerAlignment: Right
 ReflowComments: false
 SortIncludes: false
