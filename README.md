@@ -41,3 +41,9 @@ tool. Below lists these out:
 - **AlwaysBreakBeforeMultilineStrings**: This value must be false or else line
   breaks are introduced in all strings containing our OB_FMT_64, etc.
 - **BraceWrapping/AfterEnum**: This setting is broken. See https://bugs.llvm.org/show_bug.cgi?id=27381
+- A pointer inside parenthesis [`(my_ptr)->func();`], followed by a function
+  call/parameter access will result in a different break pattern than without
+  the parenthesis. This is frequently seen when de-referencing an
+  ObRef [`(~myval)`]. The `(~)` is no longer necessary when accessing a member
+  function/variable, so we recommend against using it to avoid the odd line
+  break.
