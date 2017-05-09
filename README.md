@@ -31,7 +31,7 @@ sudo apt-get install oblong-spruce
 
 ## Examples
 
-spruce --help
+    spruce --help
 
 ## Known Issues
 
