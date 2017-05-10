@@ -432,7 +432,7 @@ reformat_branch() {
     do
       # If the file was deleted in the commit we are reformatting, we need to delete it again
       case "$deleted_files" in
-      *"$diff_file"*)::
+      *"$diff_file"*)
         git rm "$diff_file" > /dev/null 2>&1
         continue
         ;;
