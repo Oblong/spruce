@@ -674,7 +674,7 @@ def main():
 
   # If successful, replace buffer contents.
   if stderr:
-    print stderr
+    print (stderr)
 
   # reload buffer
   vim.command('edit')
