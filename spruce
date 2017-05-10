@@ -35,8 +35,18 @@ or:    spruce style                       (output our .clang-format to stdout)
 after the branch was created.
 
 'plugin' has options for emacs, vim or sublime:
+    'emacs':   produces a file, 'spruce-emacs.el'. Move the file to your
+               preferred location and follow the instructions in the comments at
+               the top of the file.
     'sublime': produces a file, 'clang_format_custom.sublime-settings' which
-               should be used with the plugin: https://packagecontrol.io/packages/Clang%20Format
+               should be used with the plugin:
+               https://packagecontrol.io/packages/Clang%20Format
+               Install the plugin and replace the same-named file with this one.
+               WARNING: THIS PLUGIN DOES NOT USE SPRUCE, SO THERE WILL BE
+                 DISCREPENCIES WHEN USING OB_PRIVATE, OB_PROTECTED AND OB_PUBLIC
+    'vim':     produces a file, 'spruce-vim.py'. Move the file to your preferred
+               location and follow the instructions in the comments at the top
+               of the file.
 _EOF_
   if $IN_ERR
   then
