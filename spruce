@@ -433,7 +433,9 @@ reformat_branch() {
       # If the file was deleted in the commit we are reformatting, we need to delete it again
       case "$deleted_files" in
       *"$diff_file"*)
-        git rm "$diff_file" > /dev/null 2>&1
+        if [ -f "$diff_file" ]; then
+          git rm "$diff_file" > /dev/null 2>&1
+        fi
         continue
         ;;
       esac
@@ -448,8 +450,11 @@ reformat_branch() {
       git add "$diff_file" > /dev/null 2>&1
     done
 
-    # Create a new commit onto clang-formatted branch
-    git commit --reuse-message="$prev_commit" > /dev/null 2>&1
+    # Check that there is something to commit and create a new commit onto
+    # clang-formatted branch
+    if [ "$(git status --porcelain)" != "" ] ; then
+      git commit --reuse-message="$prev_commit" > /dev/null 2>&1
+    fi
 
     previous_commit_base=$(git rev-parse HEAD)
   done
