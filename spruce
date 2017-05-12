@@ -88,6 +88,7 @@ IGNORE_PATHS="$IGNORE_PATHS|benchmarks/city"
 IGNORE_PATHS="$IGNORE_PATHS|openssl_hostname_validation"
 IGNORE_PATHS="$IGNORE_PATHS|osx-ob-icon.h"
 IGNORE_PATHS="$IGNORE_PATHS|win32/glext.h|win32/ob-gl-win32"
+IGNORE_PATHS="$IGNORE_PATHS|obj-x86_64-linux-gnu|extra.tmp|btmp"
 
 # Helpers to take our format string where it needs to go
 
