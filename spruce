@@ -479,7 +479,7 @@ NOTICE:
 reformat-branch is done running.
 A copy of your branch has been made named $new_branch, and formatted with clang-format.
 The original branch has been left unchanged.
-The next step is to rebase the new branch on 'iz'.
+The next step is to rebase the new branch on '$master'.
 _EOF_
 }
 
