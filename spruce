@@ -725,7 +725,7 @@ clang_format_custom.sublime-settings has been created in the current working dir
 
 To use:
   1. Copy the file to:
-     Mac OS X: '~/Library/Application\ Support/Sublime Text 3/Packages/SublimeClangFormat'
+     Mac OS X: '~/Library/Application\ Support/Sublime\ Text\ 3/Packages/SublimeClangFormat'
      Linux: '~/.config/sublime-text-3/Packages/SublimeClangFormat'
   2. In Sublime:
      1. Tools -> Command Palette -> Select "Clang-Format: Select Style" -> Select "Custom"
