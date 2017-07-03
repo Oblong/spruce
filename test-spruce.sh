@@ -69,6 +69,16 @@ cleanup() {
     fi
 }
 
+start_test "regression-test-mm"
+rm -rf tmp
+mkdir tmp
+cp spruce_test_pre.mm tmp/spruce_test.mm
+cd tmp
+../spruce all
+cd ..
+diff -u spruce_test_post.mm tmp/spruce_test.mm
+assert_status_zero ""
+
 start_test "regression-test-pass1"
 rm -rf tmp
 ./spruce -o tmp spruce_test_pre.cpp
