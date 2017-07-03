@@ -48,4 +48,4 @@ tool. Below lists these out:
   function/variable, so we recommend against using it to avoid the odd line
   break.
 - an OB_P* encapsulation macro in another macro or define will result in the
-  continuation `/` character being indented beyond the 80 character limitation.
+  continuation `\` character being mis-aligned.
