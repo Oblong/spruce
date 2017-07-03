@@ -1,5 +1,7 @@
 #!/bin/sh
 # Test suite!
+# good lord paranoid lint is paranoid
+# shellcheck disable=SC2164
 ORIGDIR="$(pwd)"
 
 # Trivial test framework
@@ -69,6 +71,16 @@ cleanup() {
     fi
 }
 
+start_test "regression-test-mm"
+rm -rf tmp
+mkdir tmp
+cp spruce_test_pre.mm tmp/spruce_test.mm
+cd tmp
+../spruce all
+cd ..
+diff -u spruce_test_post.mm tmp/spruce_test.mm
+assert_status_zero ""
+
 start_test "regression-test-pass1"
 rm -rf tmp
 ./spruce -o tmp spruce_test_pre.cpp
@@ -90,8 +102,6 @@ start_test "precommit-should-complain"
 # 1. Create a git repo wif summat in't
 rm -rf bletch.tmp
 mkdir bletch.tmp
-# good lord paranoid lint is paranoid
-# shellcheck disable=SC2164
 cd bletch.tmp
 git init
 echo 'First commit!' > README.md

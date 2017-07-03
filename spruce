@@ -515,7 +515,7 @@ is_formattable_file() {
     case "$1" in
     *.[cChHm])            ;; # .c .C .h .H .m
     *.[cChH][+pPx][+pPx]) ;; # .cpp .CPP .c++ .cxx .hpp .HPP etc.
-    *.mm)                 ;; # objective-C++
+    *.mm)                 ;; # .mm objective-C++
     *)
         return 1             # false
         ;;
@@ -544,7 +544,7 @@ format_files() {
   done
 }
 
-# Format all staged .C/.c/.h/.cpp files, even if they're in the IGNORE_PATHS
+# Format all staged .C/.c/.h/.cpp/.m/.mm files, even if they're in the IGNORE_PATHS
 # FIXME: stop using git-clang-format so we can skip files in IGNORE_PATHS
 format_changes() {
 #  $GIT_CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -f --extensions c,cpp,h
@@ -817,25 +817,25 @@ _EOF_
     deploy_plugin "$2"
     ;;
   all)
-    # format all .C/.c/.h/.cpp files that are not in the IGNORE_PATHS
+    # format all .C/.c/.h/.cpp/.m/.mm files that are not in the IGNORE_PATHS
     # shellcheck disable=SC2046
-    format_files $(find . -type f -iname '*.[ch]' -o -iname '*.cpp' | grep -E -wv "$IGNORE_PATHS")
+    format_files $(find . -type f -iname '*.[chm]' -o -iname '*.cpp' -o -iname '*.mm' | grep -E -wv "$IGNORE_PATHS")
     ;;
   changes)
     format_changes
     ;;
   precommit)
-    # Check all staged .C/.c/.h/.cpp files that are not in the IGNORE_PATHS
+    # Check all staged .C/.c/.h/.cpp/.m/.mm files that are not in the IGNORE_PATHS
     # shellcheck disable=SC2046
-    check_files $(git diff --name-only HEAD --diff-filter=AM | grep -E -i '\.[ch]$|\.cpp$' | grep -E -wv "$IGNORE_PATHS")
+    check_files $(git diff --name-only HEAD --diff-filter=AM | grep -E -i '\.[chm]$|\.cpp|\.mm$' | grep -E -wv "$IGNORE_PATHS")
     ;;
   check)
     shift
-    # Check given .C/.c/.h/.cpp files (default: all that are not in the IGNORE_PATHS)
+    # Check given .C/.c/.h/.cpp/.m/.mm files (default: all that are not in the IGNORE_PATHS)
     if test "$*" = ""
     then
         # shellcheck disable=SC2046
-        check_files $(find . -type f -iname '*.[ch]' -o -iname '*.cpp' | sed 's,^\./,,' | grep -E -wv "$IGNORE_PATHS")
+        check_files $(find . -type f -iname '*.[chm]' -o -iname '*.cpp' -o -iname '*.mm' | sed 's,^\./,,' | grep -E -wv "$IGNORE_PATHS")
     else
         check_files "$@"
     fi
