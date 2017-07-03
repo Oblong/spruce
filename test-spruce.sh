@@ -1,5 +1,7 @@
 #!/bin/sh
 # Test suite!
+# good lord paranoid lint is paranoid
+# shellcheck disable=SC2164
 ORIGDIR="$(pwd)"
 
 # Trivial test framework
@@ -100,8 +102,6 @@ start_test "precommit-should-complain"
 # 1. Create a git repo wif summat in't
 rm -rf bletch.tmp
 mkdir bletch.tmp
-# good lord paranoid lint is paranoid
-# shellcheck disable=SC2164
 cd bletch.tmp
 git init
 echo 'First commit!' > README.md
