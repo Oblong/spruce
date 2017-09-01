@@ -60,7 +60,7 @@ _EOF_
 # CLANG_FORMAT_VERSION_DESC="(tags/google/stable/2017-03-17)"
 # CLANG_FORMAT_SHORT_VERSION="5.0.0"
 # CLANG_FORMAT_BREW_PKG="clang-format"
-CLANG_FORMAT_VERSION_DESC="(tags/RELEASE_380/final)"
+CLANG_FORMAT_VERSION_DESC="(tags/RELEASE_38?/final)"
 CLANG_FORMAT_SHORT_VERSION="3.8"
 CLANG_FORMAT_BREW_PKG="clang-format38"
 
@@ -273,7 +273,7 @@ install_clang_format() {
 test_clang_format_version() {
   clang_v=$($CLANG_FORMAT_PROGNAME --version || true)
   case "$clang_v" in
-  *"$CLANG_FORMAT_VERSION_DESC"*) return;;
+  *${CLANG_FORMAT_VERSION_DESC}*) return;;
   esac
 
   if [ "$clang_v" = "" ] ; then
