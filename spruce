@@ -350,7 +350,7 @@ reformat_branch() {
   fi
   if ! git cat-file -e "$post" > /dev/null 2>&1
   then
-    abort "ERROR: Commit after reformat $post is not a valid commit in this repo\n"
+    abort "ERROR: Commit after reformat $post is not a valid commit in this repo"
   fi
 
   if ! git merge-base --is-ancestor "$pre" "$post" > /dev/null 2>&1
@@ -515,6 +515,7 @@ is_formattable_file() {
     case "$1" in
     *.[cChHm])            ;; # .c .C .h .H .m
     *.[cChH][+pPx][+pPx]) ;; # .cpp .CPP .c++ .cxx .hpp .HPP etc.
+    *.cc)                 ;; # .cc
     *.mm)                 ;; # .mm objective-C++
     *)
         return 1             # false
@@ -544,7 +545,7 @@ format_files() {
   done
 }
 
-# Format all staged .C/.c/.h/.cpp/.m/.mm files, even if they're in the IGNORE_PATHS
+# Format all staged .C/.c/.h/.cpp/.m/.mm/.cc files, even if they're in the IGNORE_PATHS
 # FIXME: stop using git-clang-format so we can skip files in IGNORE_PATHS
 format_changes() {
 #  $GIT_CLANG_FORMAT_PROGNAME -style="$(cat_style_string)" -f --extensions c,cpp,h
@@ -720,7 +721,7 @@ _EOF_
       ;;
     sublime)
       cat_style_file | generate_sublime > clang_format_custom.sublime-settings
-      cat <<_EOF_
+      cat <<"_EOF_"
 clang_format_custom.sublime-settings has been created in the current working directory
 
 To use:
@@ -817,25 +818,25 @@ _EOF_
     deploy_plugin "$2"
     ;;
   all)
-    # format all .C/.c/.h/.cpp/.m/.mm files that are not in the IGNORE_PATHS
+    # format all .C/.c/.h/.cpp/.m/.mm/.cc files that are not in the IGNORE_PATHS
     # shellcheck disable=SC2046
-    format_files $(find . -type f -iname '*.[chm]' -o -iname '*.cpp' -o -iname '*.mm' | grep -E -wv "$IGNORE_PATHS")
+    format_files $(find . -type f -iname '*.[chm]' -o -iname '*.cpp' -o -iname '*.mm' -o -iname '*.cc' | grep -E -wv "$IGNORE_PATHS")
     ;;
   changes)
     format_changes
     ;;
   precommit)
-    # Check all staged .C/.c/.h/.cpp/.m/.mm files that are not in the IGNORE_PATHS
+    # Check all staged .C/.c/.h/.cpp/.m/.mm/.cc files that are not in the IGNORE_PATHS
     # shellcheck disable=SC2046
-    check_files $(git diff --name-only HEAD --diff-filter=AM | grep -E -i '\.[chm]$|\.cpp|\.mm$' | grep -E -wv "$IGNORE_PATHS")
+    check_files $(git diff --name-only HEAD --diff-filter=AM | grep -E -i '\.[chm]$|\.cpp|\.mm$|\.cc$' | grep -E -wv "$IGNORE_PATHS")
     ;;
   check)
     shift
-    # Check given .C/.c/.h/.cpp/.m/.mm files (default: all that are not in the IGNORE_PATHS)
+    # Check given .C/.c/.h/.cpp/.m/.mm/.cc files (default: all that are not in the IGNORE_PATHS)
     if test "$*" = ""
     then
         # shellcheck disable=SC2046
-        check_files $(find . -type f -iname '*.[chm]' -o -iname '*.cpp' -o -iname '*.mm' | sed 's,^\./,,' | grep -E -wv "$IGNORE_PATHS")
+        check_files $(find . -type f -iname '*.[chm]' -o -iname '*.cpp' -o -iname '*.mm' -o -iname '*.cc' | sed 's,^\./,,' | grep -E -wv "$IGNORE_PATHS")
     else
         check_files "$@"
     fi
