@@ -62,7 +62,7 @@ _EOF_
 # CLANG_FORMAT_BREW_PKG="clang-format"
 CLANG_FORMAT_VERSION_DESC="(tags/RELEASE_38?/final)"
 CLANG_FORMAT_SHORT_VERSION="3.8"
-CLANG_FORMAT_BREW_PKG="clang-format38"
+CLANG_FORMAT_BREW_PKG="clang-format@3.8"
 
 # Name of clang-format as a binary
 CLANG_FORMAT_PROGNAME="clang-format"
@@ -262,7 +262,7 @@ unlink_clang_format() {
 install_clang_format() {
   echo "installing clang-format..."
   if [ "$OS" = "Darwin" ] ; then
-    brew tap Homebrew/homebrew-versions
+    brew tap Oblong/homebrew-tools
     brew install $CLANG_FORMAT_PKGNAME
     brew link --force $CLANG_FORMAT_PKGNAME
   elif [ "$OS" = "Linux" ] ; then
