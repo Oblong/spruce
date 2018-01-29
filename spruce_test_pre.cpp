@@ -80,4 +80,16 @@ OB_PRIVATE:
   void DontOpenIt ();
 };
 
+SerialWorker::SerialWorker (const Config &cfg) : Worker (cfg)
+{
+}
+
+void func2()
+{
+  if (true)
+    OB_FATAL_ERROR_CODE (0x20200000, "Can't create %s: %" OB_FMT_RETORT "d"
+                                     "\n",
+                         "blah", 7);
+}
+
 }} // goodbye namespace oblong spruce
