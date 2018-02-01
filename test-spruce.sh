@@ -104,6 +104,8 @@ rm -rf bletch.tmp
 mkdir bletch.tmp
 cd bletch.tmp
 git init
+git config user.email "johndoe@example.com"
+git config user.name "John Doe"
 echo 'First commit!' > README.md
 git add README.md
 git commit -m 'First commit!'
