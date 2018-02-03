@@ -1,5 +1,5 @@
-oblong-spruce (0.1) precise; urgency=low
+oblong-spruce (0.33) xenial; urgency=low
 
-  * Initial packaging
+  * install clang-format@3.8 from our own recipe, as brew removed it
 
- -- Dan Kegel <dank@oblong.com>  Mon, 04 Jan 2016 13:00:40 -0800
+ -- Dan Kegel <dank@oblong.com>  Sat, 03 Feb 2018 05:22:05 +0000
