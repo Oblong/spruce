@@ -105,21 +105,23 @@ cleanup_style() {
 }
 trap cleanup_style 0
 
-# Get style suitable for users to put in ~/.clang-format if they wish
+# Get style suitable for users to put in ~/.clang-format if they wish.
+# Should also pass yamllint
 cat_style_file() {
    cat $CLANG_FORMAT_STYLE_FILE
 }
 
-# Get style suitable for -style=, but less legible
+# Get style suitable for -style=, but possibly less legible
 cat_style_string() {
-   tr '\012' ',' < $CLANG_FORMAT_STYLE_FILE | sed 's/^/{/;s/,$/}/'
+   echo '{'
+   # Add commas to end of any line that lacks one and doesn't end in an open curly
+   cat_style_file | sed -E 's/([^,{])$/\1,/'
+   echo '}'
 }
 
 # Our format is embedded in this script in alphabetical order.
-# We turn this into a single line by joining with commas, so
-#  - maps are a bit funny
-#  - we can't use comments inside this style, so put 'em here
-
+# Haven't bothered to make cat_style_file strip comments yet,
+# so put comments out of line right here:
 #--- style comments follow ---
 # AlwaysBreakBeforeMultilineStrings: false # true forces line breaks after OB_FMT_64
 # BraceWrapping:
@@ -147,16 +149,17 @@ AlwaysBreakBeforeMultilineStrings: false
 AlwaysBreakTemplateDeclarations: true
 BinPackArguments: true
 BinPackParameters: true
-BraceWrapping: {AfterClass: true
-  AfterControlStatement: true
-  AfterEnum: true
-  AfterFunction: true
-  AfterNamespace: false
-  AfterObjCDeclaration: true
-  AfterStruct: true
-  AfterUnion: true
-  BeforeCatch: true
-  BeforeElse: true
+BraceWrapping: {
+  AfterClass: true,
+  AfterControlStatement: true,
+  AfterEnum: true,
+  AfterFunction: true,
+  AfterNamespace: false,
+  AfterObjCDeclaration: true,
+  AfterStruct: true,
+  AfterUnion: true,
+  BeforeCatch: true,
+  BeforeElse: true,
   IndentBraces: true}
 BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeBraces: Custom
@@ -171,13 +174,13 @@ Cpp11BracedListStyle: true
 DerivePointerAlignment: false
 DisableFormat: false
 ExperimentalAutoDetectBinPacking: false
-ForEachMacros:   [ foreach, Q_FOREACH, BOOST_FOREACH ]
+ForEachMacros: [foreach, Q_FOREACH, BOOST_FOREACH]
 IndentCaseLabels: true
 IndentWidth: 2
 IndentWrappedFunctionNames: false
 KeepEmptyLinesAtTheStartOfBlocks: true
 MacroBlockBegin: ''
-MacroBlockEnd:   ''
+MacroBlockEnd: ''
 MaxEmptyLinesToKeep: 3
 NamespaceIndentation: None
 PenaltyBreakBeforeFirstCallParameter: 3000
