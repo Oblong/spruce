@@ -1,3 +1,9 @@
+oblong-spruce (1.0) xenial; urgency=low
+
+  * output of 'spruce style' now passes yamllint
+
+ -- Oblong Industries, Inc <buildtools@oblong.com>  Tue, 18 Dec 2018 09:52:00 -0800
+
 oblong-spruce (0.34) xenial; urgency=low
 
   * accept clang-format-3.9 on ubu1804
